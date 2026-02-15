@@ -8,8 +8,16 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* 기본 폰트: Pretendard (한국어+영문 모두 지원) */
+  --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* 타이틀 폰트: Courier Prime (시나리오 대본 스타일) */
+  --font-title: var(--font-courier-prime), "Courier New", Courier, monospace;
+
+  /* Liquid Glass 블롭 애니메이션 */
+  --animate-blob: blob 7s infinite;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +30,251 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/*
+ * 배경 블롭 애니메이션
+ * Liquid Glass 디자인의 배경에 유기적인 움직임을 줍니다.
+ */
+@keyframes blob {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+/* 블롭 애니메이션 지연 유틸리티 */
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* ==============================================
+ * TipTap 시나리오 에디터 스타일
+ *
+ * TipTap v3에서는 에디터 DOM에 `.tiptap` 클래스가
+ * 자동 부여되지 않을 수 있으므로, 직접 지정한
+ * `.scenario-editor-content` 또는 상위 `.scenario-editor`
+ * 기준으로 셀렉터를 작성합니다.
+ * ============================================== */
+
+/* 에디터 본문 영역 (editorProps.attributes.class 로 지정) */
+.scenario-editor-content {
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem; /* 15px */
+  line-height: 1.75;
+  color: var(--foreground);
+  /* 씬 헤딩 자동 넘버링 카운터 초기화 */
+  counter-reset: scene-counter;
+}
+
+/* Placeholder (빈 상태일 때 안내 텍스트) */
+.scenario-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
+
+/* 제목 스타일 */
+.scenario-editor h1 {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.scenario-editor h2 {
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.scenario-editor h3 {
+  font-family: var(--font-title);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 굵게/기울임 */
+.scenario-editor strong {
+  font-weight: 700;
+}
+
+.scenario-editor em {
+  font-style: italic;
+}
+
+/* 리스트 */
+.scenario-editor ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.scenario-editor ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.scenario-editor li {
+  margin-bottom: 0.25rem;
+}
+
+/* ==============================================
+ * 시나리오 전용 노드 스타일
+ *
+ * "미국" 포맷 (US Screenplay Format)
+ * A4 816px 기준, 1인치 = 96px
+ *
+ * 여백은 용지 기준 절대값이며,
+ * 용지 내부 좌우 패딩 없이 노드별로 개별 관리합니다.
+ * ============================================== */
+
+/* ── 공통: 일반 (paragraph) ──
+ * 좌 1.5" (144px), 우 1" (96px) */
+.scenario-editor p {
+  margin-bottom: 0.5rem;
+  padding-left: 144px;
+  padding-right: 96px;
+}
+
+/* ── 씬 헤딩 ──
+ * 좌 1.5" (144px), 우 1" (96px)
+ * 넘버링은 좌 1" (96px)에 absolute 배치 */
+.scenario-editor .scene-heading {
+  position: relative;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 144px;
+  padding-right: 96px;
+  counter-increment: scene-counter;
+}
+
+/* 첫 번째 요소의 상단 마진 제거 (용지 py-96px이 이미 1인치) */
+.scenario-editor-content > :first-child {
+  margin-top: 0;
+}
+
+.scenario-editor .scene-heading::before {
+  content: counter(scene-counter) ".";
+  position: absolute;
+  left: 96px;
+  font-family: var(--font-title);
+  font-weight: 700;
+}
+
+/* ── 지문 (Action) ──
+ * 좌 1.5" (144px), 우 1" (96px) */
+.scenario-editor .action {
+  margin-bottom: 0.5rem;
+  padding-left: 144px;
+  padding-right: 96px;
+  line-height: 1.8;
+}
+
+/* ── 등장인물 하이라이트 (네비게이터에서 인물 클릭 시) ── */
+.scenario-editor .character-highlight {
+  background-color: rgba(250, 204, 21, 0.35);
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .scenario-editor .character-highlight {
+    background-color: rgba(234, 179, 8, 0.25);
+  }
+}
+
+/* ── 등장인물 (Character) ──
+ * 좌 3.7" (355px), 우 3.1" (298px) */
+.scenario-editor .character {
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 1rem;
+  margin-bottom: 0;
+  padding-left: 355px;
+  padding-right: 298px;
+  color: #4b5563;
+}
+
+@media (prefers-color-scheme: dark) {
+  .scenario-editor .character {
+    color: #9ca3af;
+  }
+}
+
+/* ── 대사 (Dialogue) ──
+ * 좌 2.5" (240px), 우 2" (192px) */
+.scenario-editor .dialogue {
+  margin-bottom: 0.5rem;
+  padding-left: 240px;
+  padding-right: 192px;
+  line-height: 1.7;
+}
+
+/* ── 괄호지시 (Parenthetical) ──
+ * 좌 3.1" (298px), 우 2.6" (250px) */
+.scenario-editor .parenthetical {
+  font-style: italic;
+  font-size: 0.875rem;
+  margin-bottom: 0.125rem;
+  padding-left: 298px;
+  padding-right: 250px;
+  color: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  .scenario-editor .parenthetical {
+    color: #9ca3af;
+  }
+}
+
+/* ── 전환 (Transition) ──
+ * 좌 1.5" (144px), 우 1" (96px), 우측 정렬 */
+.scenario-editor .transition-block {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding-left: 144px;
+  padding-right: 96px;
+  color: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  .scenario-editor .transition-block {
+    color: #9ca3af;
+  }
 }
