@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { serializeTiptapToHtml } from "@/lib/export/pdf/tiptapSerializer";
 import { buildPdfPrintCss } from "@/lib/export/pdf/printCss";
 import { renderPdfHtml } from "@/lib/export/pdf/renderHtml";
-import { launchPdfBrowser } from "@/lib/export/pdf/chromium";
+import { renderPdfWithChromium } from "@/lib/export/pdf/chromium";
 import type { PdfExportRequest, PdfPageSettings, PdfExportErrorCode } from "@/lib/export/pdf/types";
 
 export const runtime = "nodejs";
@@ -106,29 +106,23 @@ export async function POST(req: Request) {
   });
 
   try {
-    const browser = await launchPdfBrowser();
-    try {
-      const page = await browser.newPage();
-      await page.setContent(pageHtml, { waitUntil: "networkidle" });
-      const pdfBuffer = await page.pdf({
-        printBackground: true,
-        preferCSSPageSize: true,
-        displayHeaderFooter: false,
-      });
-      const filename = safeFilename(document.title ?? "document");
-      return new NextResponse(Buffer.from(pdfBuffer), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
-          "Cache-Control": "no-store",
-        },
-      });
-    } finally {
-      await browser.close();
-    }
+    const pdfBuffer = await renderPdfWithChromium(pageHtml);
+    const filename = safeFilename(document.title ?? "document");
+    return new NextResponse(pdfBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        "Cache-Control": "no-store",
+      },
+    });
   } catch (error) {
-    console.error("[/api/export/pdf] failed", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[/api/export/pdf] failed", {
+      errorMessage,
+      documentId: body.documentId,
+      projectId: body.projectId,
+    });
     return jsonError(500, "PDF_RENDER_FAILED", "PDF 생성 중 오류가 발생했습니다.");
   }
 }
