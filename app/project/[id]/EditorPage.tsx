@@ -710,7 +710,10 @@ export default function EditorPage({
 
       const response = await fetch("/api/export/pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/pdf",
+        },
         body: JSON.stringify(payload),
       });
 
@@ -723,6 +726,14 @@ export default function EditorPage({
           // no-op
         }
         window.alert(message);
+        return;
+      }
+
+      const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+      if (!contentType.includes("application/pdf")) {
+        const bodyText = await response.text();
+        console.error("[export/pdf] expected application/pdf, got:", contentType, bodyText.slice(0, 500));
+        window.alert("PDF 응답이 올바르지 않습니다. 잠시 후 다시 시도해주세요.");
         return;
       }
 

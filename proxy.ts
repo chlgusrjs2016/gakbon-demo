@@ -30,6 +30,12 @@ function debugLog(payload: {
 // #endregion
 
 export async function proxy(request: NextRequest) {
+  // API 라우트는 각 Route Handler에서 인증/권한을 직접 처리합니다.
+  // 여기서 리다이렉트하면(JSON 대신 HTML 응답) 바이너리 다운로드가 깨질 수 있습니다.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next({ request });
+  }
+
   const hasSupabaseUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
   const hasSupabaseAnonKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
