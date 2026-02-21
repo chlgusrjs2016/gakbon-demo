@@ -33,9 +33,11 @@ export default function ScenarioEditor({
     extensions: [
       StarterKit.configure({
         blockquote: false,
+        bold: false,
         codeBlock: false,
         horizontalRule: false,
         heading: { levels: [1, 2, 3] },
+        italic: false,
       }),
       Placeholder.configure({
         placeholder: "시나리오를 작성하세요...",

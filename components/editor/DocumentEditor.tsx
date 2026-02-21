@@ -2,18 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import Link from "@tiptap/extension-link";
-import TaskList from "@tiptap/extension-task-list";
-import TaskItem from "@tiptap/extension-task-item";
 import type { JSONContent, Editor } from "@tiptap/react";
-import { DocUnderline } from "@/lib/editor/extensions/DocUnderline";
-import { DocHighlight } from "@/lib/editor/extensions/DocHighlight";
-import { DocTextStyle } from "@/lib/editor/extensions/DocTextStyle";
-import { DocTextAlign } from "@/lib/editor/extensions/DocTextAlign";
-import { DocImage } from "@/lib/editor/extensions/DocImage";
-import { DocTable, DocTableCell, DocTableHeader, DocTableRow } from "@/lib/editor/extensions/DocTable";
+import { documentExtensions } from "@/lib/editor/documentKit";
 
 type DocumentEditorProps = {
   content: JSONContent | null;
@@ -169,29 +160,10 @@ export default function DocumentEditor({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-      }),
       Placeholder.configure({
         placeholder: "문서를 작성하세요. '/' 를 입력해 블록 명령을 열 수 있습니다.",
       }),
-      DocTextStyle,
-      DocTextAlign,
-      DocUnderline,
-      DocHighlight,
-      DocImage,
-      TaskList,
-      TaskItem.configure({
-        nested: true,
-      }),
-      DocTable,
-      DocTableRow,
-      DocTableHeader,
-      DocTableCell,
+      ...documentExtensions,
     ],
     content: getInitialContent(content),
     onUpdate: ({ editor }) => {

@@ -9,9 +9,8 @@
  */
 "use client";
 
-const TOTAL_INCHES = 8.27; // A4 표준 가로
-const PX_PER_INCH = 96;
-const RULER_WIDTH = Math.round(TOTAL_INCHES * PX_PER_INCH); // 794px
+import { PX_PER_INCH } from "@/lib/editor/pageEngine/config";
+
 const RULER_HEIGHT = 28;
 
 type TickMark = {
@@ -20,10 +19,10 @@ type TickMark = {
   label?: string;
 };
 
-function generateTicks(): TickMark[] {
+function generateTicks(totalInches: number): TickMark[] {
   const ticks: TickMark[] = [];
 
-  for (let i = 0; i <= TOTAL_INCHES * 8; i++) {
+  for (let i = 0; i <= totalInches * 8; i++) {
     const inch = i / 8;
     const position = inch * PX_PER_INCH;
     const isFullInch = i % 8 === 0;
@@ -34,7 +33,7 @@ function generateTicks(): TickMark[] {
       ticks.push({
         position,
         height: 14,
-        label: inch > 0 && inch < TOTAL_INCHES ? String(Math.round(inch)) : undefined,
+        label: inch > 0 && inch < totalInches ? String(Math.round(inch)) : undefined,
       });
     } else if (isHalfInch) {
       ticks.push({ position, height: 10 });
@@ -48,9 +47,18 @@ function generateTicks(): TickMark[] {
   return ticks;
 }
 
-const ticks = generateTicks();
-
-export default function Ruler() {
+export default function Ruler({
+  widthPx,
+  totalInches,
+  leftMarginPx,
+  rightMarginPx,
+}: {
+  widthPx: number;
+  totalInches: number;
+  leftMarginPx: number;
+  rightMarginPx: number;
+}) {
+  const ticks = generateTicks(totalInches);
   return (
     <div
       className={[
@@ -59,7 +67,7 @@ export default function Ruler() {
         "border border-zinc-200/80 dark:border-zinc-700/60",
         "rounded-t-sm",
       ].join(" ")}
-      style={{ width: RULER_WIDTH, height: RULER_HEIGHT }}
+      style={{ width: widthPx, height: RULER_HEIGHT }}
     >
       {/* 눈금 (위에서 아래로) */}
       {ticks.map((tick, i) => (
@@ -94,13 +102,13 @@ export default function Ruler() {
       {/* 좌우 마진 인디케이터 (삼각형) */}
       <div
         className="absolute bottom-0"
-        style={{ left: PX_PER_INCH }}
+        style={{ left: leftMarginPx }}
       >
         <div className="absolute bottom-0 -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-b-[5px] border-l-transparent border-r-transparent border-b-zinc-400 dark:border-b-zinc-500" />
       </div>
       <div
         className="absolute bottom-0"
-        style={{ left: RULER_WIDTH - PX_PER_INCH }}
+        style={{ left: widthPx - rightMarginPx }}
       >
         <div className="absolute bottom-0 -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-b-[5px] border-l-transparent border-r-transparent border-b-zinc-400 dark:border-b-zinc-500" />
       </div>

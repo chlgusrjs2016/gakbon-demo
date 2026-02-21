@@ -24,6 +24,8 @@ import {
   Send,
   Share2,
   Download,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import ScenarioEditor from "@/components/editor/ScenarioEditor";
 import DocumentEditor from "@/components/editor/DocumentEditor";
@@ -34,7 +36,12 @@ import AssistSidebar from "@/components/editor/AssistSidebar";
 import NodeTypeDropdown from "@/components/editor/NodeTypeDropdown";
 import Ruler from "@/components/editor/Ruler";
 import LineNumbers from "@/components/editor/LineNumbers";
-import { usePageLayout, PAGE_WIDTH, PAGE_HEIGHT, PAGE_GAP, TOP_MARGIN } from "@/lib/editor/usePageLayout";
+import {
+  PX_PER_INCH,
+  PAGE_SIZE_PRESETS,
+} from "@/lib/editor/pageEngine/config";
+import { usePageRender } from "@/lib/editor/pageEngine/usePageRender";
+import type { PageSizeKey, StoredPageRenderSettings } from "@/lib/editor/pageEngine/types";
 import {
   createDocument,
   createDocumentFolder,
@@ -52,10 +59,20 @@ import {
   type DocumentFolder,
   type DocumentType,
 } from "@/app/actions/document";
+import {
+  getProjectPageRenderSettings,
+  upsertProjectPageRenderSettings,
+} from "@/app/actions/pageRenderSettings";
 import type { JSONContent, Editor } from "@tiptap/react";
+import type { PdfExportRequest } from "@/lib/export/pdf/types";
 
 const FORMAT_OPTIONS = [
   { value: "us", label: "미국" },
+];
+
+const PAGE_SIZE_OPTIONS: { value: PageSizeKey; label: string }[] = [
+  { value: "a4", label: "A4 (8.27” × 11.69”)" },
+  { value: "us_letter", label: "US Letter (8.5” × 11”)" },
 ];
 
 const MENU_SURFACE_CLASS = [
@@ -74,14 +91,18 @@ const MENU_ITEM_BASE_CLASS = [
 
 /* ── 포맷 선택 팝업 메뉴 ── */
 function FormatMenu({
-  value,
-  options,
-  onChange,
+  currentFormat,
+  currentPageSize,
+  onFormatChange,
+  onPageSizeChange,
+  isScreenplay,
   onClose,
 }: {
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (v: string) => void;
+  currentFormat: string;
+  currentPageSize: PageSizeKey;
+  onFormatChange: (v: string) => void;
+  onPageSizeChange: (v: PageSizeKey) => void;
+  isScreenplay: boolean;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -103,22 +124,43 @@ function FormatMenu({
         MENU_SURFACE_CLASS,
       ].join(" ")}
     >
-      {options.map((opt) => (
+      {FORMAT_OPTIONS.map((opt) => (
         <button
           key={opt.value}
           type="button"
-          onClick={() => onChange(opt.value)}
+          onClick={() => onFormatChange(opt.value)}
           className={[
             MENU_ITEM_BASE_CLASS,
             "justify-between text-zinc-600 dark:text-zinc-300 hover:bg-white/40 dark:hover:bg-white/[0.06]",
           ].join(" ")}
         >
           <span>{opt.label}</span>
-          {opt.value === value && (
+          {opt.value === currentFormat && (
             <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
           )}
         </button>
       ))}
+      {isScreenplay && (
+        <>
+          <div className="my-1 h-px bg-zinc-200/80 dark:bg-white/[0.08]" />
+          {PAGE_SIZE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onPageSizeChange(opt.value)}
+              className={[
+                MENU_ITEM_BASE_CLASS,
+                "justify-between text-zinc-600 dark:text-zinc-300 hover:bg-white/40 dark:hover:bg-white/[0.06]",
+              ].join(" ")}
+            >
+              <span>{opt.label}</span>
+              {opt.value === currentPageSize && (
+                <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
+              )}
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -155,6 +197,50 @@ function SettingsMenu({
         ].join(" ")}
       >
         <span>설정 항목 없음</span>
+      </button>
+    </div>
+  );
+}
+
+function ExportMenu({
+  loading,
+  onExportPdf,
+  onClose,
+}: {
+  loading: boolean;
+  onExportPdf: () => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className={[
+        "absolute right-0 top-full z-[100] mt-1.5",
+        "min-w-[168px]",
+        MENU_SURFACE_CLASS,
+      ].join(" ")}
+    >
+      <button
+        type="button"
+        onClick={onExportPdf}
+        disabled={loading}
+        className={[
+          MENU_ITEM_BASE_CLASS,
+          "justify-between text-zinc-600 dark:text-zinc-300 hover:bg-white/40 dark:hover:bg-white/[0.06]",
+          loading ? "opacity-60 cursor-not-allowed" : "",
+        ].join(" ")}
+      >
+        <span>{loading ? "PDF 생성 중..." : "PDF로 내보내기"}</span>
       </button>
     </div>
   );
@@ -202,6 +288,9 @@ export default function EditorPage({
 
   /* ── 현재 포맷 ── */
   const [currentFormat, setCurrentFormat] = useState("us");
+  const [currentPageSize, setCurrentPageSize] = useState<PageSizeKey>("a4");
+  const [screenplayRenderSettings, setScreenplayRenderSettings] =
+    useState<StoredPageRenderSettings | null>(null);
 
   /* ── 포맷 메뉴 토글 ── */
   const [showFormatMenu, setShowFormatMenu] = useState(false);
@@ -222,6 +311,8 @@ export default function EditorPage({
   const [isCreatingDocument, setIsCreatingDocument] = useState(false);
   const [isRefreshingDocuments, setIsRefreshingDocuments] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const documentImageUploadTriggerRef = useRef<(() => void) | null>(null);
 
   /* ── 디바운스 타이머 ── */
@@ -234,6 +325,25 @@ export default function EditorPage({
       if (leftPanelUnmountTimerRef.current) clearTimeout(leftPanelUnmountTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await getProjectPageRenderSettings(project.id);
+      if (cancelled || !result.data) return;
+      setScreenplayRenderSettings({
+        screenplay_page_size: result.data.screenplay_page_size,
+        screenplay_margins: result.data.screenplay_margins,
+        node_break_policies: result.data.node_break_policies,
+      });
+      if (result.data.screenplay_page_size) {
+        setCurrentPageSize(result.data.screenplay_page_size);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id]);
 
   const openLeftPanel = useCallback((panel: LeftPanelType) => {
     if (leftPanelUnmountTimerRef.current) {
@@ -326,11 +436,31 @@ export default function EditorPage({
     setEditorInstance(editor);
   }, []);
 
-  /* ── 페이지 분할 ── */
-  const { pageCount } = usePageLayout(editorInstance);
   const currentDocument = documentList.find((d) => d.id === currentDocumentId) ?? null;
   const currentType = currentDocument?.document_type ?? "screenplay";
   const isDocumentMode = currentType !== "screenplay";
+  const render = usePageRender({
+    editor: editorInstance,
+    documentType: isDocumentMode ? "document" : "screenplay",
+    pageSizeKey: isDocumentMode ? "a4" : currentPageSize,
+    settings: isDocumentMode ? null : screenplayRenderSettings,
+  });
+  const screenplayPage = PAGE_SIZE_PRESETS[currentPageSize];
+  const documentPage = PAGE_SIZE_PRESETS.a4;
+  const activePage = isDocumentMode ? documentPage : render.pageSize;
+  const activeRulerInches = activePage.width / PX_PER_INCH;
+  const { pageCount, canvasHeight, pageGap, margins, lineNumberTopPadding } = render;
+
+  const handlePageSizeChange = useCallback((nextPageSize: PageSizeKey) => {
+    setCurrentPageSize(nextPageSize);
+    setScreenplayRenderSettings((prev) => ({
+      ...(prev ?? {}),
+      screenplay_page_size: nextPageSize,
+    }));
+    void upsertProjectPageRenderSettings(project.id, {
+      screenplayPageSize: nextPageSize,
+    });
+  }, [project.id]);
 
   const handleCreateDocument = useCallback(async (documentType: DocumentType = "screenplay") => {
     if (isCreatingDocument) return;
@@ -554,6 +684,66 @@ export default function EditorPage({
     }
   }, [handleRefreshDocuments, activeFolderId]);
 
+  const handleExportPdf = useCallback(async () => {
+    if (!currentDocument || isExportingPdf) return;
+
+    setIsExportingPdf(true);
+    try {
+      const payload: PdfExportRequest = {
+        projectId: project.id,
+        documentId: currentDocument.id,
+        documentType: (currentDocument.document_type ?? "screenplay") as "screenplay" | "document",
+        contentSnapshot:
+          currentDocument.content && currentDocument.content.type === "doc"
+            ? currentDocument.content
+            : { type: "doc", content: [{ type: "paragraph" }] },
+        pageSettings: {
+          pageSize: isDocumentMode ? "a4" : currentPageSize,
+          margins: {
+            top: margins.top,
+            bottom: margins.bottom,
+            left: margins.left,
+            right: margins.right,
+          },
+        },
+      };
+
+      const response = await fetch("/api/export/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        let message = "PDF 내보내기에 실패했습니다.";
+        try {
+          const errorBody = (await response.json()) as { message?: string };
+          if (errorBody?.message) message = errorBody.message;
+        } catch {
+          // no-op
+        }
+        window.alert(message);
+        return;
+      }
+
+      const blob = await response.blob();
+      const filename = `${(currentDocument.title || "document").trim() || "document"}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setShowExportMenu(false);
+    } catch {
+      window.alert("PDF 내보내기 중 네트워크 오류가 발생했습니다.");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }, [currentDocument, currentPageSize, isDocumentMode, isExportingPdf, margins.bottom, margins.left, margins.right, margins.top, project.id]);
+
   /* ── 헤더 버튼: 세로 아이콘+라벨 스타일 ── */
   const headerBtnClass = [
     "flex flex-col items-center gap-0.5 h-auto py-1.5 w-14",
@@ -626,9 +816,17 @@ export default function EditorPage({
             </button>
             {showFormatMenu && (
               <FormatMenu
-                value={currentFormat}
-                options={FORMAT_OPTIONS}
-                onChange={(v) => { setCurrentFormat(v); setShowFormatMenu(false); }}
+                currentFormat={currentFormat}
+                currentPageSize={currentPageSize}
+                isScreenplay={!isDocumentMode}
+                onFormatChange={(v) => {
+                  setCurrentFormat(v);
+                  setShowFormatMenu(false);
+                }}
+                onPageSizeChange={(v) => {
+                  handlePageSizeChange(v);
+                  setShowFormatMenu(false);
+                }}
                 onClose={() => setShowFormatMenu(false)}
               />
             )}
@@ -682,19 +880,6 @@ export default function EditorPage({
 
         </div>
 
-        {/* ── 가운데: screenplay 전용 스타일 선택 ── */}
-        {!isDocumentMode && (
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5">
-            <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
-              스타일
-            </span>
-            <NodeTypeDropdown
-              value={currentNodeType}
-              onChange={handleNodeTypeChange}
-            />
-          </div>
-        )}
-
         {/* ── 오른쪽: 저장 상태 + 도구 버튼 ── */}
         <div className="flex items-center gap-0.5">
           {/* 저장 상태 */}
@@ -720,10 +905,23 @@ export default function EditorPage({
             <Share2 className="h-4 w-4" />
             <span className="text-[10px]">공유</span>
           </button>
-          <button className={headerBtnClass} title="내보내기">
-            <Download className="h-4 w-4" />
-            <span className="text-[10px]">내보내기</span>
-          </button>
+          <div className="relative">
+            <button
+              className={headerBtnClass}
+              title="내보내기"
+              onClick={() => setShowExportMenu((prev) => !prev)}
+            >
+              <Download className="h-4 w-4" />
+              <span className="text-[10px]">내보내기</span>
+            </button>
+            {showExportMenu && (
+              <ExportMenu
+                loading={isExportingPdf}
+                onExportPdf={handleExportPdf}
+                onClose={() => setShowExportMenu(false)}
+              />
+            )}
+          </div>
           <button className={headerBtnClass} title="발송">
             <Send className="h-4 w-4" />
             <span className="text-[10px]">발송</span>
@@ -785,16 +983,21 @@ export default function EditorPage({
 
               <div className="flex flex-1 flex-col items-center overflow-y-auto px-8">
                 {/* Ruler — A4 폭, 툴바 아래 */}
-                <div className="sticky top-0 z-20 shrink-0 pt-4 pb-0 bg-gradient-to-b from-gray-100/80 via-gray-100/60 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/60 dark:to-transparent" style={{ width: PAGE_WIDTH }}>
-                  <Ruler />
+                <div className="sticky top-0 z-20 shrink-0 pt-4 pb-0 bg-gradient-to-b from-gray-100/80 via-gray-100/60 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/60 dark:to-transparent" style={{ width: documentPage.width }}>
+                  <Ruler
+                    widthPx={documentPage.width}
+                    totalInches={documentPage.width / PX_PER_INCH}
+                    leftMarginPx={margins.left}
+                    rightMarginPx={margins.right}
+                  />
                 </div>
 
-                {/* A4 용지 (다중 페이지) */}
+                {/* 단일 페이지 캔버스 + 자연 스크롤 */}
                 <div
                   className="relative shrink-0"
                   style={{
-                    width: PAGE_WIDTH,
-                    minHeight: pageCount * PAGE_HEIGHT + (pageCount - 1) * PAGE_GAP,
+                    width: documentPage.width,
+                    minHeight: canvasHeight,
                   }}
                 >
                   {Array.from({ length: pageCount }, (_, i) => (
@@ -808,24 +1011,28 @@ export default function EditorPage({
                         "dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]",
                       ].join(" ")}
                       style={{
-                        top: i * (PAGE_HEIGHT + PAGE_GAP),
-                        width: PAGE_WIDTH,
-                        height: PAGE_HEIGHT,
+                        top: i * (documentPage.height + pageGap),
+                        width: documentPage.width,
+                        height: documentPage.height,
                       }}
                     />
                   ))}
 
                   {/* 라인 넘버 거터 — A4 왼쪽 바깥 */}
-                  <LineNumbers editor={editorInstance} pageCount={pageCount} topPadding={96} />
+                  <LineNumbers
+                    editor={editorInstance}
+                    pageCount={pageCount}
+                    topPadding={lineNumberTopPadding}
+                  />
 
                   <div
                     className="relative"
                     style={{
-                      minHeight: PAGE_HEIGHT,
-                      paddingTop: 96,
-                      paddingRight: 96,
-                      paddingBottom: 96,
-                      paddingLeft: 96,
+                      minHeight: documentPage.height,
+                      paddingTop: margins.top,
+                      paddingRight: margins.right,
+                      paddingBottom: margins.bottom,
+                      paddingLeft: margins.left,
                       boxSizing: "border-box",
                     }}
                   >
@@ -851,21 +1058,74 @@ export default function EditorPage({
               </div>
             </div>
           ) : (
-            <div className="flex flex-1 flex-col items-center overflow-y-auto px-8">
-              {/* Ruler — A4 폭, 상단 고정 */}
-              <div className="sticky top-0 z-20 shrink-0 pt-4 pb-0 bg-gradient-to-b from-gray-100/80 via-gray-100/60 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/60 dark:to-transparent" style={{ width: PAGE_WIDTH }}>
-                <Ruler />
+            <div className="flex h-full flex-col">
+              {/* Screenplay 툴바 */}
+              <div className="shrink-0 px-8 pt-3">
+                <div
+                  className={[
+                    "mx-auto flex w-full max-w-[980px] items-center gap-1 rounded-xl px-3 py-2",
+                    "bg-white/35 dark:bg-white/[0.04]",
+                    "backdrop-blur-2xl",
+                    "border border-white/60 dark:border-white/[0.1]",
+                    "shadow-[0_4px_24px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.5)]",
+                    "dark:shadow-[0_4px_24px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.04)]",
+                  ].join(" ")}
+                >
+                  <button
+                    type="button"
+                    className={[
+                      "inline-flex h-8 w-8 items-center justify-center rounded-md",
+                      "text-zinc-500 transition-colors",
+                      "hover:bg-white/60 hover:text-zinc-800",
+                      "dark:text-zinc-300 dark:hover:bg-white/[0.08] dark:hover:text-zinc-100",
+                    ].join(" ")}
+                    title="뒤로가기"
+                    onClick={() => editorInstance?.chain().focus().undo().run()}
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className={[
+                      "inline-flex h-8 w-8 items-center justify-center rounded-md",
+                      "text-zinc-500 transition-colors",
+                      "hover:bg-white/60 hover:text-zinc-800",
+                      "dark:text-zinc-300 dark:hover:bg-white/[0.08] dark:hover:text-zinc-100",
+                    ].join(" ")}
+                    title="앞으로가기"
+                    onClick={() => editorInstance?.chain().focus().redo().run()}
+                  >
+                    <Redo2 className="h-4 w-4" />
+                  </button>
+
+                  <div className="mx-1 h-5 w-px bg-zinc-200/80 dark:bg-white/[0.08]" />
+
+                  <NodeTypeDropdown
+                    value={currentNodeType}
+                    onChange={handleNodeTypeChange}
+                  />
+                </div>
               </div>
 
-              {/* A4 용지 (다중 페이지) + 라인 넘버 래퍼 */}
+            <div className="flex flex-1 flex-col items-center overflow-y-auto px-8">
+              {/* Ruler — A4 폭, 상단 고정 */}
+              <div className="sticky top-0 z-20 shrink-0 pt-4 pb-0 bg-gradient-to-b from-gray-100/80 via-gray-100/60 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/60 dark:to-transparent" style={{ width: screenplayPage.width }}>
+                <Ruler
+                  widthPx={screenplayPage.width}
+                  totalInches={activeRulerInches}
+                  leftMarginPx={margins.left}
+                  rightMarginPx={margins.right}
+                />
+              </div>
+
+              {/* 단일 페이지 캔버스 + 자연 스크롤 + 라인 넘버 래퍼 */}
               <div
                 className="relative shrink-0"
                 style={{
-                  width: PAGE_WIDTH,
-                  minHeight: pageCount * PAGE_HEIGHT + (pageCount - 1) * PAGE_GAP,
+                  width: screenplayPage.width,
+                  minHeight: canvasHeight,
                 }}
               >
-                {/* N장의 A4 배경 (absolute, pointer-events: none) */}
                 {Array.from({ length: pageCount }, (_, i) => (
                   <div
                     key={i}
@@ -877,22 +1137,28 @@ export default function EditorPage({
                       "dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]",
                     ].join(" ")}
                     style={{
-                      top: i * (PAGE_HEIGHT + PAGE_GAP),
-                      width: PAGE_WIDTH,
-                      height: PAGE_HEIGHT,
+                      top: i * (screenplayPage.height + pageGap),
+                      width: screenplayPage.width,
+                      height: screenplayPage.height,
                     }}
                   />
                 ))}
 
                 {/* 라인 넘버 거터 — A4 왼쪽 바깥 */}
-                <LineNumbers editor={editorInstance} pageCount={pageCount} />
+                <LineNumbers
+                  editor={editorInstance}
+                  pageCount={pageCount}
+                  topPadding={lineNumberTopPadding}
+                />
 
                 {/* 에디터 (연속 흐름, 첫 페이지 상단 여백) */}
                 <div
                   className="relative"
                   style={{
-                    paddingTop: TOP_MARGIN,
-                    minHeight: PAGE_HEIGHT,
+                    minHeight: screenplayPage.height,
+                    paddingTop: margins.top,
+                    paddingBottom: margins.bottom,
+                    boxSizing: "border-box",
                   }}
                 >
                   {currentDocument ? (
@@ -912,6 +1178,7 @@ export default function EditorPage({
 
               {/* 용지 아래 여백 */}
               <div className="h-12 shrink-0" />
+            </div>
             </div>
           )}
         </main>

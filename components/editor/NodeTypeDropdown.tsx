@@ -1,15 +1,11 @@
 /**
  * 노드타입 드롭다운
  *
- * 범용 GlassDropdown 컴포넌트를 사용하여 시나리오 노드 타입을 선택합니다.
+ * Document 툴바의 폰트 선택과 동일한 느낌의 select UI를 사용합니다.
  */
 "use client";
 
-import GlassDropdown, {
-  type GlassDropdownOption,
-} from "@/components/ui/GlassDropdown";
-
-const NODE_TYPE_OPTIONS: GlassDropdownOption[] = [
+const NODE_TYPE_OPTIONS = [
   { value: "paragraph", label: "일반" },
   { value: "sceneHeading", label: "씬 헤딩" },
   { value: "action", label: "지문" },
@@ -26,11 +22,17 @@ type Props = {
 
 export default function NodeTypeDropdown({ value, onChange }: Props) {
   return (
-    <GlassDropdown
+    <select
       value={value}
-      options={NODE_TYPE_OPTIONS}
-      onChange={onChange}
-      align="center"
-    />
+      onChange={(e) => onChange(e.target.value)}
+      className="h-8 rounded-md bg-transparent px-2 text-sm text-zinc-700 outline-none dark:text-zinc-200"
+      title="스타일(노드)"
+    >
+      {NODE_TYPE_OPTIONS.map((node) => (
+        <option key={node.value} value={node.value}>
+          {node.label}
+        </option>
+      ))}
+    </select>
   );
 }

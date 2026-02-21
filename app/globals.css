@@ -73,10 +73,13 @@ body {
 /* 에디터 본문 영역 (editorProps.attributes.class 로 지정) */
 .scenario-editor-content {
   outline: none;
-  font-family: var(--font-sans);
-  font-size: 0.9375rem; /* 15px */
-  line-height: 1.75;
-  color: var(--foreground);
+  display: flow-root;
+  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #000000;
+  box-sizing: border-box;
   /* 씬 헤딩 자동 넘버링 카운터 초기화 */
   counter-reset: scene-counter;
 }
@@ -92,36 +95,52 @@ body {
 
 /* 제목 스타일 */
 .scenario-editor h1 {
-  font-family: var(--font-title);
+  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 400;
   margin-top: 2rem;
   margin-bottom: 0.5rem;
 }
 
 .scenario-editor h2 {
-  font-family: var(--font-title);
+  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 400;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
 }
 
 .scenario-editor h3 {
-  font-family: var(--font-title);
+  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 400;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
 }
 
 /* 굵게/기울임 */
 .scenario-editor strong {
-  font-weight: 700;
+  font-weight: 400 !important;
+}
+
+.scenario-editor b {
+  font-weight: 400 !important;
 }
 
 .scenario-editor em {
-  font-style: italic;
+  font-style: normal !important;
+}
+
+.scenario-editor i {
+  font-style: normal !important;
+}
+
+.scenario-editor [style*="font-weight"] {
+  font-weight: 400 !important;
+}
+
+.scenario-editor [style*="font-style"] {
+  font-style: normal !important;
 }
 
 /* 리스트 */
@@ -154,9 +173,14 @@ body {
 /* ── 공통: 일반 (paragraph) ──
  * 좌 1.5" (144px), 우 1" (96px) */
 .scenario-editor p {
-  margin-bottom: 0.5rem;
+  margin-top: 0;
+  margin-bottom: 0;
   padding-left: 144px;
   padding-right: 96px;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #000000;
 }
 
 /* ── 씬 헤딩 ──
@@ -164,20 +188,22 @@ body {
  * 넘버링은 좌 1" (96px)에 absolute 배치 */
 .scenario-editor .scene-heading {
   position: relative;
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 0.9375rem;
+  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
+  font-weight: 400;
+  font-size: 16px;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
+  letter-spacing: 0;
+  line-height: 1;
+  margin-top: 2em;
+  margin-bottom: 0;
   padding-left: 144px;
   padding-right: 96px;
   counter-increment: scene-counter;
+  color: #000000;
 }
 
-/* 첫 번째 요소의 상단 마진 제거 (용지 py-96px이 이미 1인치) */
-.scenario-editor-content > :first-child {
+/* 첫 번째 요소 상단 마진 초기화 (scene-heading은 예외) */
+.scenario-editor-content > :first-child:not(.scene-heading) {
   margin-top: 0;
 }
 
@@ -185,17 +211,21 @@ body {
   content: counter(scene-counter) ".";
   position: absolute;
   left: 96px;
-  font-family: var(--font-title);
-  font-weight: 700;
+  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
+  font-weight: 400;
 }
 
 /* ── 지문 (Action) ──
  * 좌 1.5" (144px), 우 1" (96px) */
 .scenario-editor .action {
-  margin-bottom: 0.5rem;
+  margin-top: 1em;
+  margin-bottom: 0;
   padding-left: 144px;
   padding-right: 96px;
-  line-height: 1.8;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #000000;
 }
 
 /* ── 등장인물 하이라이트 (네비게이터에서 인물 클릭 시) ── */
@@ -214,69 +244,60 @@ body {
 /* ── 등장인물 (Character) ──
  * 좌 3.7" (355px), 우 3.1" (298px) */
 .scenario-editor .character {
-  font-weight: 700;
-  font-size: 0.875rem;
+  font-weight: 400;
+  font-size: 16px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 1rem;
+  letter-spacing: 0;
+  line-height: 1;
+  margin-top: 1em;
   margin-bottom: 0;
   padding-left: 355px;
   padding-right: 298px;
-  color: #4b5563;
-}
-
-@media (prefers-color-scheme: dark) {
-  .scenario-editor .character {
-    color: #9ca3af;
-  }
+  color: #000000;
 }
 
 /* ── 대사 (Dialogue) ──
  * 좌 2.5" (240px), 우 2" (192px) */
 .scenario-editor .dialogue {
-  margin-bottom: 0.5rem;
+  margin-top: 0em;
+  margin-bottom: 0;
   padding-left: 240px;
   padding-right: 192px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #000000;
 }
 
 /* ── 괄호지시 (Parenthetical) ──
  * 좌 3.1" (298px), 우 2.6" (250px) */
 .scenario-editor .parenthetical {
-  font-style: italic;
-  font-size: 0.875rem;
-  margin-bottom: 0.125rem;
+  font-style: normal;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+  margin-top: 0em;
+  margin-bottom: 0;
   padding-left: 298px;
   padding-right: 250px;
-  color: #6b7280;
-}
-
-@media (prefers-color-scheme: dark) {
-  .scenario-editor .parenthetical {
-    color: #9ca3af;
-  }
+  color: #000000;
 }
 
 /* ── 전환 (Transition) ──
  * 좌 1.5" (144px), 우 1" (96px), 우측 정렬 */
 .scenario-editor .transition-block {
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 0.875rem;
+  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
+  font-weight: 400;
+  font-size: 16px;
   text-align: right;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  letter-spacing: 0;
+  line-height: 1;
+  margin-top: 1em;
+  margin-bottom: 0;
   padding-left: 144px;
   padding-right: 96px;
-  color: #6b7280;
-}
-
-@media (prefers-color-scheme: dark) {
-  .scenario-editor .transition-block {
-    color: #9ca3af;
-  }
+  color: #000000;
 }
 
 /* ==============================================
