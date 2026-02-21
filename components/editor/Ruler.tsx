@@ -1,7 +1,7 @@
 /**
  * 인치 눈금자 (Ruler)
  *
- * A4 용지 폭(816px at 96dpi = 8.5인치)에 맞춘 눈금자입니다.
+ * A4 용지 표준 폭(8.27인치 = 794px @ 96dpi)에 맞춘 눈금자입니다.
  * 레퍼런스처럼 '자' 형태가 드러나도록:
  * - 배경 바가 있고
  * - 눈금이 위에서 아래로 내려오며
@@ -9,9 +9,9 @@
  */
 "use client";
 
-const TOTAL_INCHES = 8.5;
+const TOTAL_INCHES = 8.27; // A4 표준 가로
 const PX_PER_INCH = 96;
-const RULER_WIDTH = TOTAL_INCHES * PX_PER_INCH; // 816px
+const RULER_WIDTH = Math.round(TOTAL_INCHES * PX_PER_INCH); // 794px
 const RULER_HEIGHT = 28;
 
 type TickMark = {

@@ -25,6 +25,7 @@ export default async function Home() {
   const { data: projects } = await supabase
     .from("projects")
     .select("*")
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false });
 
   return (

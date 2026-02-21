@@ -11,12 +11,12 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Editor } from "@tiptap/react";
 
-/* ── 상수 ── */
-export const PAGE_WIDTH = 816; // 8.5" × 96dpi
-export const PAGE_HEIGHT = 1056; // 11" × 96dpi
+/* ── 상수 (A4 표준: 가로 8.27인치, 세로 11.69인치 @ 96dpi) ── */
+export const PAGE_WIDTH = Math.round(8.27 * 96);   // 794px
+export const PAGE_HEIGHT = Math.round(11.69 * 96); // 1122px
 export const TOP_MARGIN = 96; // 상단 1인치
 export const BOTTOM_MARGIN = 96; // 하단 1인치
-export const CONTENT_HEIGHT = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN; // 864px
+export const CONTENT_HEIGHT = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN; // 930px
 export const PAGE_GAP = 32; // 페이지 사이 시각적 간격 (px)
 
 type UsePageLayoutReturn = {

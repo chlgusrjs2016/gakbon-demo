@@ -26,6 +26,7 @@ export default async function ProjectEditorPage({
     .from("projects")
     .select("*")
     .eq("id", projectId)
+    .is("deleted_at", null)
     .single();
 
   // 프로젝트가 없거나 접근 권한이 없으면 메인으로 이동
@@ -33,19 +34,34 @@ export default async function ProjectEditorPage({
     redirect("/");
   }
 
-  // 프로젝트의 첫 번째 문서 가져오기
-  const { data: document } = await supabase
+  // 프로젝트의 문서 목록 가져오기
+  const { data: documents } = await supabase
     .from("documents")
     .select("*")
     .eq("project_id", projectId)
-    .order("sort_order", { ascending: true })
-    .limit(1)
-    .single();
+    .is("deleted_at", null)
+    .order("sort_order", { ascending: true });
+
+  const { data: trashedDocuments } = await supabase
+    .from("documents")
+    .select("*")
+    .eq("project_id", projectId)
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false });
+
+  const { data: folders } = await supabase
+    .from("document_folders")
+    .select("*")
+    .eq("project_id", projectId)
+    .is("deleted_at", null)
+    .order("sort_order", { ascending: true });
 
   return (
     <EditorPage
       project={project}
-      document={document}
+      documents={documents ?? []}
+      folders={folders ?? []}
+      trashedDocuments={trashedDocuments ?? []}
     />
   );
 }

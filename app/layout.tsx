@@ -12,7 +12,12 @@
  */
 
 import type { Metadata } from "next";
-import { Courier_Prime } from "next/font/google";
+import {
+  Courier_Prime,
+  Noto_Sans_KR,
+  IBM_Plex_Sans_KR,
+  Nanum_Myeongjo,
+} from "next/font/google";
 import "./globals.css";
 
 /**
@@ -24,6 +29,24 @@ const courierPrime = Courier_Prime({
   variable: "--font-courier-prime",
   subsets: ["latin"],
   weight: ["400", "700"],
+});
+
+const notoSansKr = Noto_Sans_KR({
+  variable: "--font-noto-sans-kr",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+});
+
+const ibmPlexSansKr = IBM_Plex_Sans_KR({
+  variable: "--font-ibm-plex-sans-kr",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+});
+
+const nanumMyeongjo = Nanum_Myeongjo({
+  variable: "--font-nanum-myeongjo",
+  subsets: ["latin"],
+  weight: ["400", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -49,7 +72,15 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
         />
       </head>
-      <body className={`${courierPrime.variable} antialiased`}>
+      <body
+        className={[
+          courierPrime.variable,
+          notoSansKr.variable,
+          ibmPlexSansKr.variable,
+          nanumMyeongjo.variable,
+          "antialiased",
+        ].join(" ")}
+      >
         {children}
       </body>
     </html>

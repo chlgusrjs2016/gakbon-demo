@@ -145,7 +145,7 @@ body {
  * 시나리오 전용 노드 스타일
  *
  * "미국" 포맷 (US Screenplay Format)
- * A4 816px 기준, 1인치 = 96px
+ * A4 표준 8.27×11.69인치(794×1122px @ 96dpi) 기준, 1인치 = 96px
  *
  * 여백은 용지 기준 절대값이며,
  * 용지 내부 좌우 패딩 없이 노드별로 개별 관리합니다.
@@ -277,4 +277,164 @@ body {
   .scenario-editor .transition-block {
     color: #9ca3af;
   }
+}
+
+/* ==============================================
+ * Document 에디터 스타일
+ * ============================================== */
+.document-editor-content {
+  outline: none;
+  min-height: 930px;
+  color: var(--foreground);
+  line-height: 1.8;
+  letter-spacing: 0.01em;
+  word-break: keep-all;
+}
+
+.document-editor-content:focus,
+.document-editor-content:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.document-editor .ProseMirror:focus {
+  outline: none;
+}
+
+.document-editor .ProseMirror-selectednode {
+  outline: none !important;
+}
+
+.document-editor-content p {
+  margin-bottom: 0.9rem;
+}
+
+.document-editor-content h1 {
+  font-size: 2rem;
+  line-height: 1.3;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.document-editor-content h2 {
+  font-size: 1.5rem;
+  line-height: 1.4;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.6rem;
+}
+
+.document-editor-content h3 {
+  font-size: 1.2rem;
+  line-height: 1.5;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.document-editor-content ul,
+.document-editor-content ol {
+  margin-bottom: 0.9rem;
+  padding-left: 1.5rem;
+}
+
+.document-editor-content ul {
+  list-style: disc;
+}
+
+.document-editor-content ol {
+  list-style: decimal;
+}
+
+.document-editor-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.5rem;
+}
+
+.document-editor-content li[data-type="taskItem"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.document-editor-content li[data-type="taskItem"] > label {
+  margin-top: 0.35rem;
+  display: inline-flex;
+}
+
+.document-editor-content li[data-type="taskItem"] > div {
+  flex: 1;
+}
+
+.document-editor-content li[data-type="taskItem"] > label input[type="checkbox"] {
+  accent-color: #2563eb;
+}
+
+.document-editor-content mark {
+  padding: 0 0.08em;
+  border-radius: 0.15em;
+}
+
+.document-editor-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.document-editor-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem auto;
+  border-radius: 0.5rem;
+}
+
+.document-editor-content .doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 1rem 0;
+}
+
+.document-editor-content .doc-table td,
+.document-editor-content .doc-table th {
+  border: 1px solid #d4d4d8;
+  padding: 0.5rem 0.625rem;
+  vertical-align: top;
+  background: #fff;
+  min-height: 44px;
+}
+
+.document-editor-content .doc-table th {
+  background: #f4f4f5;
+  font-weight: 600;
+}
+
+.document-editor-content .doc-table td p,
+.document-editor-content .doc-table th p {
+  margin-bottom: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .document-editor-content a {
+    color: #60a5fa;
+  }
+
+  .document-editor-content .doc-table td,
+  .document-editor-content .doc-table th {
+    border-color: rgba(255, 255, 255, 0.14);
+    background: #18181b;
+  }
+
+  .document-editor-content .doc-table th {
+    background: #27272a;
+  }
+}
+
+.document-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
 }

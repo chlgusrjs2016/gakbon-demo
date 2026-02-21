@@ -127,12 +127,15 @@ export default function NavigatorSidebar({ editor }: Props) {
   useEffect(() => {
     if (!editor) return;
 
-    // 초기 추출
-    refresh();
+    // 초기 추출은 다음 프레임으로 미뤄 동기 setState-in-effect를 피합니다.
+    const rafId = requestAnimationFrame(() => {
+      refresh();
+    });
 
     // 에디터 업데이트마다 재추출
     editor.on("update", refresh);
     return () => {
+      cancelAnimationFrame(rafId);
       editor.off("update", refresh);
     };
   }, [editor, refresh]);
@@ -205,7 +208,7 @@ export default function NavigatorSidebar({ editor }: Props) {
   );
 
   return (
-    <div className="flex h-full w-[280px] shrink-0 p-2">
+    <div className="flex h-full w-[360px] shrink-0 p-2">
       <aside
         className={[
           "flex flex-1 flex-col",

@@ -73,6 +73,7 @@ export async function getProjects() {
   const { data, error } = await supabase
     .from("projects")
     .select("*")
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -88,12 +89,33 @@ export async function getProjects() {
  * 프로젝트 삭제 시 관련 문서도 cascade로 함께 삭제됩니다.
  */
 export async function deleteProject(projectId: string) {
+  return moveProjectToTrash(projectId);
+}
+
+export async function renameProject(projectId: string, title: string) {
+  const supabase = await createClient();
+  const nextTitle = title.trim();
+  if (!nextTitle) return { success: false, error: "프로젝트 이름을 입력해주세요." };
+
+  const { error } = await supabase
+    .from("projects")
+    .update({ title: nextTitle })
+    .eq("id", projectId)
+    .is("deleted_at", null);
+
+  if (error) return { success: false, error: `이름 변경 실패: ${error.message}` };
+  revalidatePath("/");
+  return { success: true, error: null };
+}
+
+export async function moveProjectToTrash(projectId: string) {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("projects")
-    .delete()
-    .eq("id", projectId);
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", projectId)
+    .is("deleted_at", null);
 
   if (error) {
     return { error: `삭제 실패: ${error.message}` };
@@ -101,4 +123,86 @@ export async function deleteProject(projectId: string) {
 
   revalidatePath("/");
   return { success: true };
+}
+
+export async function duplicateProject(projectId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: sourceProject, error: sourceProjectError } = await supabase
+    .from("projects")
+    .select("id,user_id,title,description")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .single();
+  if (sourceProjectError || !sourceProject) {
+    return { success: false, error: sourceProjectError?.message ?? "원본 프로젝트를 찾지 못했습니다." };
+  }
+
+  const { data: newProject, error: newProjectError } = await supabase
+    .from("projects")
+    .insert({
+      user_id: user.id,
+      title: `${sourceProject.title} (복제)`,
+      description: sourceProject.description ?? "",
+    })
+    .select("id")
+    .single();
+  if (newProjectError || !newProject) {
+    return { success: false, error: newProjectError?.message ?? "프로젝트 복제 생성에 실패했습니다." };
+  }
+
+  const [{ data: sourceFolders }, { data: sourceDocs }] = await Promise.all([
+    supabase
+      .from("document_folders")
+      .select("id,name,sort_order")
+      .eq("project_id", projectId)
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("documents")
+      .select("id,title,content,sort_order,folder_id,document_type")
+      .eq("project_id", projectId)
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true }),
+  ]);
+
+  const folderIdMap = new Map<string, string>();
+  for (const folder of sourceFolders ?? []) {
+    const { data: insertedFolder, error: folderError } = await supabase
+      .from("document_folders")
+      .insert({
+        project_id: newProject.id,
+        name: folder.name,
+        sort_order: folder.sort_order,
+      })
+      .select("id")
+      .single();
+    if (folderError || !insertedFolder) {
+      return { success: false, error: folderError?.message ?? "폴더 복제에 실패했습니다." };
+    }
+    folderIdMap.set(folder.id, insertedFolder.id);
+  }
+
+  for (const doc of sourceDocs ?? []) {
+    const mappedFolderId = doc.folder_id ? folderIdMap.get(doc.folder_id) ?? null : null;
+    const { error: docError } = await supabase.from("documents").insert({
+      project_id: newProject.id,
+      title: doc.title,
+      content: doc.content,
+      sort_order: doc.sort_order,
+      folder_id: mappedFolderId,
+      document_type: doc.document_type,
+    });
+    if (docError) {
+      return { success: false, error: docError.message };
+    }
+  }
+
+  revalidatePath("/");
+  return { success: true, projectId: newProject.id };
 }
