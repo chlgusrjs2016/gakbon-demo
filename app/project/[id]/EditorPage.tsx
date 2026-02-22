@@ -720,8 +720,15 @@ export default function EditorPage({
       if (!response.ok) {
         let message = "PDF 내보내기에 실패했습니다.";
         try {
-          const errorBody = (await response.json()) as { message?: string };
+          const errorBody = (await response.json()) as {
+            message?: string;
+            debugId?: string;
+            detail?: string;
+          };
           if (errorBody?.message) message = errorBody.message;
+          if (errorBody?.detail) {
+            message = `${message}\n원인: ${errorBody.detail}`;
+          }
         } catch {
           // no-op
         }

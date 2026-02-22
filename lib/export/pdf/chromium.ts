@@ -13,8 +13,13 @@ export async function launchPdfBrowser() {
 }
 
 export async function renderPdfWithChromium(html: string) {
-  const executablePath = await chromium.executablePath();
+  const rendererErrors: string[] = [];
+  const executablePath = process.env.CHROME_EXECUTABLE_PATH || (await chromium.executablePath());
   const args = [...chromium.args];
+
+  if (!executablePath) {
+    throw new Error("Chromium executable path is empty");
+  }
 
   try {
     const browser = await playwrightChromium.launch({
@@ -35,24 +40,34 @@ export async function renderPdfWithChromium(html: string) {
       await browser.close();
     }
   } catch (playwrightError) {
+    const message =
+      playwrightError instanceof Error ? playwrightError.message : String(playwrightError);
+    rendererErrors.push(`playwright: ${message}`);
     console.error("[pdf] playwright renderer failed, fallback to puppeteer", playwrightError);
   }
 
-  const browser = await puppeteer.launch({
-    args,
-    executablePath,
-    headless: true,
-  });
   try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdfBuffer = await page.pdf({
-      printBackground: true,
-      preferCSSPageSize: true,
-      displayHeaderFooter: false,
+    const browser = await puppeteer.launch({
+      args,
+      executablePath,
+      headless: true,
     });
-    return Buffer.from(pdfBuffer);
-  } finally {
-    await browser.close();
+    try {
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: "networkidle0" });
+      const pdfBuffer = await page.pdf({
+        printBackground: true,
+        preferCSSPageSize: true,
+        displayHeaderFooter: false,
+      });
+      return Buffer.from(pdfBuffer);
+    } finally {
+      await browser.close();
+    }
+  } catch (puppeteerError) {
+    const message =
+      puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError);
+    rendererErrors.push(`puppeteer: ${message}`);
+    throw new Error(`All PDF renderers failed: ${rendererErrors.join(" | ")}`);
   }
 }
