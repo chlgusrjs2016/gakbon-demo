@@ -1303,7 +1303,10 @@ export default function EditorPage({
                 }}
               />
 
-              <div className="flex flex-1 flex-col items-center overflow-y-auto px-8">
+              <div
+                className="flex flex-1 flex-col items-center overflow-y-auto px-8"
+                style={{ overflowAnchor: "none" }}
+              >
                 {/* Ruler — A4 폭, 툴바 아래 */}
                 <div className="sticky top-0 z-20 shrink-0 pt-4 pb-0 bg-gradient-to-b from-gray-100/80 via-gray-100/60 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/60 dark:to-transparent" style={{ width: documentPage.width }}>
                   <Ruler
@@ -1429,7 +1432,10 @@ export default function EditorPage({
                 </div>
               </div>
 
-            <div className="flex flex-1 flex-col items-center overflow-y-auto px-8">
+            <div
+              className="flex flex-1 flex-col items-center overflow-y-auto px-8"
+              style={{ overflowAnchor: "none" }}
+            >
               {!isScreenplayFormatReady ? (
                 <>
                   <div

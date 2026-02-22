@@ -74,6 +74,7 @@ body {
 .scenario-editor-content {
   outline: none;
   display: flow-root;
+  overflow-anchor: none;
   font-family: var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace);
   font-size: var(--sp-base-fs, 16px);
   line-height: var(--sp-base-lh, 1);
