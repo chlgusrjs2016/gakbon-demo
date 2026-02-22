@@ -13,6 +13,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { List } from "lucide-react";
 import type { Editor } from "@tiptap/react";
+import SidebarPanel from "@/components/editor/SidebarPanel";
+
+function tryGetEditorDom(editor: Editor): HTMLElement | null {
+  try {
+    return editor.view.dom as HTMLElement;
+  } catch {
+    return null;
+  }
+}
 
 /* ── 타입 정의 ── */
 type SceneInfo = {
@@ -71,7 +80,8 @@ function extractCharacters(editor: Editor): string[] {
 function countLines(editor: Editor): number {
   let lines = 0;
 
-  const editorDom = editor.view.dom;
+  const editorDom = tryGetEditorDom(editor);
+  if (!editorDom) return 0;
   const children = editorDom.children;
 
   for (let i = 0; i < children.length; i++) {
@@ -149,7 +159,12 @@ export default function NavigatorSidebar({ editor }: Props) {
       editor.chain().focus().setTextSelection(pos + 1).run();
 
       // DOM 요소로 스크롤
-      const domAtPos = editor.view.domAtPos(pos + 1);
+      let domAtPos;
+      try {
+        domAtPos = editor.view.domAtPos(pos + 1);
+      } catch {
+        return;
+      }
       const element = domAtPos.node as HTMLElement;
       const targetEl =
         element.nodeType === Node.TEXT_NODE
@@ -164,7 +179,8 @@ export default function NavigatorSidebar({ editor }: Props) {
   /* ── 하이라이트 제거 ── */
   const clearHighlight = useCallback(() => {
     if (!editor) return;
-    const editorDom = editor.view.dom;
+    const editorDom = tryGetEditorDom(editor);
+    if (!editorDom) return;
     editorDom
       .querySelectorAll('[data-type="character"]')
       .forEach((el) => {
@@ -189,7 +205,8 @@ export default function NavigatorSidebar({ editor }: Props) {
       clearHighlight();
 
       // 해당 인물 노드에 인라인 스타일로 하이라이트 적용
-      const editorDom = editor.view.dom;
+      const editorDom = tryGetEditorDom(editor);
+      if (!editorDom) return;
       const characterNodes = editorDom.querySelectorAll(
         '[data-type="character"]',
       );
@@ -208,29 +225,28 @@ export default function NavigatorSidebar({ editor }: Props) {
   );
 
   return (
-    <div className="flex h-full w-[360px] shrink-0 p-2">
-      <aside
-        className={[
-          "flex flex-1 flex-col",
-          "rounded-2xl",
-          "bg-white/30 dark:bg-white/[0.04]",
-          "backdrop-blur-2xl",
-          "border border-white/60 dark:border-white/[0.1]",
-          "shadow-[0_4px_24px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.5)]",
-          "dark:shadow-[0_4px_24px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.04)]",
-          "overflow-hidden",
-        ].join(" ")}
-      >
-        {/* 헤더 */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/40 dark:border-white/[0.06]">
-          <List className="h-4 w-4 text-zinc-400" />
-          <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-            네비게이터
-          </span>
-        </div>
-
-        {/* 스크롤 콘텐츠 */}
-        <div className="flex-1 overflow-y-auto px-3 py-3">
+    <SidebarPanel
+      side="left"
+      title="네비게이터"
+      icon={<List className="h-4 w-4" />}
+      bodyClassName="px-3 py-3"
+      footer={
+        <>
+          <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
+            <span>라인 수:</span>
+            <span>{stats.lineCount}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
+            <span>장면 수:</span>
+            <span>{stats.sceneCount}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
+            <span>인물 수:</span>
+            <span>{stats.characterCount}</span>
+          </div>
+        </>
+      }
+    >
           {/* ── 장면 섹션 ── */}
           <div className="mb-4">
             <h3 className="mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
@@ -288,24 +304,6 @@ export default function NavigatorSidebar({ editor }: Props) {
               )}
             </div>
           </div>
-        </div>
-
-        {/* 하단 통계 */}
-        <div className="border-t border-white/40 dark:border-white/[0.06] px-4 py-2.5">
-          <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
-            <span>라인 수:</span>
-            <span>{stats.lineCount}</span>
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
-            <span>장면 수:</span>
-            <span>{stats.sceneCount}</span>
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
-            <span>인물 수:</span>
-            <span>{stats.characterCount}</span>
-          </div>
-        </div>
-      </aside>
-    </div>
+    </SidebarPanel>
   );
 }

@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Editor } from "@tiptap/react";
+import { buildScreenplayDomGroups } from "@/lib/editor/pageEngine/screenplayProjectionDom";
 
 const NODE_NUMBER_OPTICAL_OFFSET = 2;
 
@@ -18,6 +19,7 @@ type NodeInfo = {
   number: number;
   /** 블록의 인덱스 (0-based) */
   blockIndex: number;
+  blockEndIndex: number;
   /** 블록의 line-height (px) */
   lineHeight: number;
   /** 해당 블록의 font-size (px) — 거터 숫자도 동일 크기로 표시 */
@@ -36,17 +38,35 @@ export default function LineNumbers({ editor, topPadding = 96, pageCount = 1 }: 
   const [nodes, setNodes] = useState<NodeInfo[]>([]);
   const [activeBlockIndex, setActiveBlockIndex] = useState<number>(-1);
 
+  const getEditorDomSafe = useCallback(() => {
+    if (!editor) return null;
+    try {
+      return editor.view.dom as HTMLElement;
+    } catch {
+      return null;
+    }
+  }, [editor]);
+
   /* ── 노드 위치 계산 ── */
   const updateLines = useCallback(() => {
-    if (!editor || !editor.view) return;
-
-    const editorDom = editor.view.dom;
+    const editorDom = getEditorDomSafe();
+    if (!editor || !editorDom) return;
     const children = editorDom.children;
     const newNodes: NodeInfo[] = [];
     let nodeNumber = 1;
+    const scenarioRoot = (editorDom as HTMLElement).closest(".scenario-editor") as HTMLElement | null;
+    const layoutMode = scenarioRoot?.dataset.layoutMode;
+    const shouldProjectGroups = layoutMode === "kr_dialogue_inline" || layoutMode === "us_dialogue_block";
+    const grouped = shouldProjectGroups
+      ? buildScreenplayDomGroups(Array.from(children) as HTMLElement[])
+      : Array.from(children).map((el, i) => ({
+          startIndex: i,
+          endIndex: i,
+          elements: [el as HTMLElement],
+        }));
 
-    for (let i = 0; i < children.length; i++) {
-      const el = children[i] as HTMLElement;
+    for (const group of grouped) {
+      const el = group.elements[0];
       const style = window.getComputedStyle(el);
       const lh = parseFloat(style.lineHeight) || 26;
       const fs = parseFloat(style.fontSize) || 15;
@@ -55,7 +75,8 @@ export default function LineNumbers({ editor, topPadding = 96, pageCount = 1 }: 
         // 글자 베이스라인 특성상 약간 위로 떠 보이므로 optical offset을 더합니다.
         top: topPadding + el.offsetTop + lh / 2 + NODE_NUMBER_OPTICAL_OFFSET,
         number: nodeNumber,
-        blockIndex: i,
+        blockIndex: group.startIndex,
+        blockEndIndex: group.endIndex,
         lineHeight: lh,
         fontSize: fs,
       });
@@ -63,11 +84,12 @@ export default function LineNumbers({ editor, topPadding = 96, pageCount = 1 }: 
     }
 
     setNodes(newNodes);
-  }, [editor, topPadding]);
+  }, [editor, topPadding, getEditorDomSafe]);
 
   /* ── 커서 위치 → 현재 블록 인덱스 추적 ── */
   const updateActiveLine = useCallback(() => {
-    if (!editor || !editor.view) return;
+    if (!editor) return;
+    if (!getEditorDomSafe()) return;
 
     const { $from } = editor.state.selection;
     let blockIndex = -1;
@@ -81,7 +103,7 @@ export default function LineNumbers({ editor, topPadding = 96, pageCount = 1 }: 
     });
 
     setActiveBlockIndex(blockIndex);
-  }, [editor]);
+  }, [editor, getEditorDomSafe]);
 
   useEffect(() => {
     if (!editor) return;
@@ -116,7 +138,8 @@ export default function LineNumbers({ editor, topPadding = 96, pageCount = 1 }: 
       style={{ right: "100%", width: 48 }}
     >
       {nodes.map((node) => {
-        const isActive = node.blockIndex === activeBlockIndex;
+        const isActive =
+          activeBlockIndex >= node.blockIndex && activeBlockIndex <= node.blockEndIndex;
         return (
           <div
             key={node.number}

@@ -5,18 +5,20 @@ import type { Editor } from "@tiptap/react";
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_PRESETS,
+  createPageRenderConfig,
   resolvePageRenderConfig,
 } from "./config";
 import { buildPageMetrics, computeBreakMarkers } from "./breaks";
 import { measureBlocks } from "./measure";
 import { applyPageBreakSpacing, resetPageBreakSpacing } from "./plugin";
-import type { PageMetrics, PageSizeKey, StoredPageRenderSettings } from "./types";
+import type { PageMetrics, PageRenderConfig, PageSizeKey, StoredPageRenderSettings } from "./types";
 
 type UsePageRenderArgs = {
   editor: Editor | null;
   documentType: "screenplay" | "document";
   pageSizeKey?: PageSizeKey;
   settings?: StoredPageRenderSettings | null;
+  configOverride?: PageRenderConfig | null;
 };
 
 type UsePageRenderResult = {
@@ -44,10 +46,11 @@ export function usePageRender({
   documentType,
   pageSizeKey = DEFAULT_PAGE_SIZE,
   settings,
+  configOverride,
 }: UsePageRenderArgs): UsePageRenderResult {
   const resolvedConfig = useMemo(
-    () => resolvePageRenderConfig(pageSizeKey, settings),
-    [pageSizeKey, settings]
+    () => configOverride ?? resolvePageRenderConfig(pageSizeKey, settings),
+    [configOverride, pageSizeKey, settings]
   );
   const [metrics, setMetrics] = useState<PageMetrics>({
     ...EMPTY_METRICS,
@@ -55,13 +58,24 @@ export function usePageRender({
   });
   const [ready, setReady] = useState(false);
   const rafRef = useRef<number | null>(null);
+  const lastDebugSignatureRef = useRef<string>("");
+
+  const canAccessEditorView = useCallback(() => {
+    if (!editor || editor.isDestroyed) return false;
+    try {
+      void editor.view.dom;
+      return true;
+    } catch {
+      return false;
+    }
+  }, [editor]);
 
   const refresh = useCallback(() => {
-    if (!editor || editor.isDestroyed) return;
+    if (!canAccessEditorView()) return;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
     rafRef.current = requestAnimationFrame(() => {
-      if (!editor || editor.isDestroyed) return;
+      if (!editor || !canAccessEditorView()) return;
       const domObserver = (
         editor.view as typeof editor.view & {
           domObserver?: { stop: () => void; start: () => void };
@@ -81,11 +95,8 @@ export function usePageRender({
         const next = buildPageMetrics(blocks, resolvedConfig, breaks);
         setMetrics(next);
 
-        if (
-          typeof window !== "undefined" &&
-          window.location.search.includes("layoutDebug=1")
-        ) {
-          console.log("[layoutDebug]", {
+        if (typeof window !== "undefined" && window.location.search.includes("layoutDebug=1")) {
+          const debugPayload = {
             pageCount: next.pageCount,
             breakCount: next.breakMarkers.length,
             breakPositions: next.breakMarkers.map((m) => m.blockIndex),
@@ -98,7 +109,12 @@ export function usePageRender({
               text: b.text.slice(0, 24),
               marginTop: b.marginTop,
             })),
-          });
+          };
+          const signature = JSON.stringify(debugPayload);
+          if (signature !== lastDebugSignatureRef.current) {
+            lastDebugSignatureRef.current = signature;
+            console.log("[layoutDebug]", debugPayload);
+          }
         }
       } finally {
         domObserver?.start();
@@ -106,7 +122,7 @@ export function usePageRender({
 
       setReady(true);
     });
-  }, [documentType, editor, resolvedConfig]);
+  }, [documentType, editor, resolvedConfig, canAccessEditorView]);
 
   useEffect(() => {
     if (!editor) return;

@@ -7,6 +7,9 @@ import { renderPdfHtml } from "@/lib/export/pdf/renderHtml";
 import { renderPdfWithChromium } from "@/lib/export/pdf/chromium";
 import { getPdfEmbeddedFontCss } from "@/lib/export/pdf/fonts";
 import type { PdfExportRequest, PdfPageSettings } from "@/lib/export/pdf/types";
+import { resolveScreenplaySpecFromSources } from "@/lib/editor/screenplayFormat/resolve";
+import { unwrapDialogueBlocks } from "@/lib/editor/screenplayProjection/unwrapDialogueBlocks";
+import { inflateDialogueBlocks } from "@/lib/editor/screenplayRuntime/inflateDialogueBlocks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -118,10 +121,58 @@ export async function POST(req: Request) {
 
   const pageSettings = normalizePageSettings(body.pageSettings);
   const snapshot = normalizeSnapshot(body.contentSnapshot);
-  const content = snapshot ?? (document.content as JSONContent);
+  const rawContent = snapshot ?? (document.content as JSONContent);
+  const canonicalContent =
+    body.documentType === "screenplay"
+      ? (unwrapDialogueBlocks(rawContent) ?? rawContent)
+      : rawContent;
+  const content =
+    body.documentType === "screenplay"
+      ? (inflateDialogueBlocks(canonicalContent) ?? canonicalContent)
+      : canonicalContent;
+  let screenplaySpec = null;
+  if (body.documentType === "screenplay") {
+    const { data: screenplaySettings } = await supabase
+      .from("document_screenplay_render_settings")
+      .select("format_key,custom_format_id,visual_overrides,break_policy_overrides")
+      .eq("document_id", body.documentId)
+      .maybeSingle();
+    let customFormat: {
+      id: string;
+      base_format_key: "us" | "kr";
+      font_coverage: Record<string, unknown>;
+      base_font_size?: number | null;
+      node_font_coverage_overrides?: Record<string, unknown> | null;
+    } | null = null;
+    if (screenplaySettings?.custom_format_id) {
+      const { data: customData } = await supabase
+        .from("user_screenplay_custom_formats")
+        .select("id,base_format_key,font_coverage,base_font_size,node_font_coverage_overrides")
+        .eq("id", screenplaySettings.custom_format_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      customFormat = (customData as typeof customFormat) ?? null;
+    }
+      const normalizedScreenplaySettings = screenplaySettings
+      ? {
+          format_key: screenplaySettings.format_key === "kr" ? ("kr" as const) : ("us" as const),
+          custom_format_id: (screenplaySettings.custom_format_id as string | null | undefined) ?? null,
+          visual_overrides: (screenplaySettings.visual_overrides ?? null) as Record<string, unknown> | null,
+          break_policy_overrides: (screenplaySettings.break_policy_overrides ?? null) as Record<string, unknown> | null,
+        }
+      : null;
+    screenplaySpec = resolveScreenplaySpecFromSources({
+      settingsRow: normalizedScreenplaySettings as never,
+      customFormatRow: (customFormat as never) ?? null,
+    });
+  }
   const html = serializeTiptapToHtml(body.documentType, content);
-  const embeddedFontCss = await getPdfEmbeddedFontCss(body.documentType);
-  const cssText = buildPdfPrintCss(body.documentType, pageSettings, embeddedFontCss);
+  const embeddedFontCss = await getPdfEmbeddedFontCss(
+    body.documentType === "screenplay" && screenplaySpec
+      ? { documentType: "screenplay", screenplaySpec }
+      : { documentType: "document" }
+  );
+  const cssText = buildPdfPrintCss(body.documentType, pageSettings, embeddedFontCss, screenplaySpec);
   const pageHtml = renderPdfHtml({
     title: document.title ?? "document",
     bodyClassName: body.documentType === "screenplay" ? "screenplay-root" : "document-root",

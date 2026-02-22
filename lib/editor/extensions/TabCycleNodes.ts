@@ -36,6 +36,14 @@ function cycleNode(editor: Editor, direction: 1 | -1): boolean {
     (currentIndex + direction + NODE_CYCLE.length) % NODE_CYCLE.length;
   const nextType = NODE_CYCLE[nextIndex];
 
+  if (nextType === "character") {
+    editor.chain().focus().insertDialogueBlockFromCharacter().run();
+    return true;
+  }
+  if (nextType === "dialogue" || nextType === "parenthetical") {
+    editor.chain().focus().appendSpeechSegment(nextType).run();
+    return true;
+  }
   if (nextType === "paragraph") {
     editor.chain().focus().setParagraph().run();
   } else {
@@ -43,6 +51,15 @@ function cycleNode(editor: Editor, direction: 1 | -1): boolean {
   }
 
   return true;
+}
+
+function isInsideDialogueBlock(editor: Editor): boolean {
+  const { $from } = editor.state.selection;
+  for (let depth = $from.depth; depth >= 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (node?.type?.name === "dialogueBlock") return true;
+  }
+  return false;
 }
 
 export const TabCycleNodes = Extension.create({
@@ -59,6 +76,12 @@ export const TabCycleNodes = Extension.create({
             if (event.key !== "Tab") return false;
 
             // Tab 또는 Shift+Tab
+            if (isInsideDialogueBlock(editor)) {
+              const parentType = editor.state.selection.$from.parent.type.name;
+              if (parentType === "dialogue" || parentType === "parenthetical") {
+                return false;
+              }
+            }
             const direction = event.shiftKey ? -1 : 1;
             const handled = cycleNode(editor, direction);
 

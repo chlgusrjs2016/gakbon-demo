@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { DocumentFolder, DocumentType } from "@/app/actions/document";
+import SidebarPanel from "@/components/editor/SidebarPanel";
 
 const MENU_SURFACE_CLASS = [
   "rounded-xl py-1.5",
@@ -376,218 +377,190 @@ export default function DocumentsSidebar({
     );
   };
 
-  return (
-    <div className="flex h-full w-[360px] shrink-0 p-2">
-      <aside
-        className={[
-          "flex flex-1 flex-col",
-          "rounded-2xl",
-          "bg-white/30 dark:bg-white/[0.04]",
-          "backdrop-blur-2xl",
-          "border border-white/60 dark:border-white/[0.1]",
-          "shadow-[0_4px_24px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.5)]",
-          "dark:shadow-[0_4px_24px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.04)]",
-          "overflow-hidden",
-        ].join(" ")}
+  const headerActions = (
+    <>
+      <div className="relative" ref={createMenuRef}>
+        <button
+          type="button"
+          disabled={isCreating}
+          onClick={() => setShowCreateMenu((prev) => !prev)}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-700 disabled:opacity-60 dark:text-zinc-300 dark:hover:bg-white/[0.08] dark:hover:text-zinc-100"
+          title="New File"
+        >
+          <FilePlus2 className="h-4 w-4" />
+        </button>
+        {showCreateMenu && (
+          <div className="absolute right-0 top-full z-[100] mt-1.5 min-w-[150px] rounded-xl border border-white/60 bg-white/40 py-1.5 backdrop-blur-3xl saturate-150 shadow-[0_8px_40px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(255,255,255,0.4),inset_0_0.5px_0_rgba(255,255,255,0.5)] dark:border-white/[0.1] dark:bg-zinc-900/40 dark:shadow-[0_8px_40px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.06),inset_0_0.5px_0_rgba(255,255,255,0.06)]">
+            <button
+              type="button"
+              onClick={() => {
+                onCreateFile("screenplay");
+                setShowCreateMenu(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-600 transition-all duration-100 hover:bg-white/40 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
+            >
+              <Film className="h-3.5 w-3.5" />
+              <span>시나리오</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onCreateFile("document");
+                setShowCreateMenu(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-600 transition-all duration-100 hover:bg-white/40 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>문서</span>
+            </button>
+          </div>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onCreateFolder}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-700 dark:text-zinc-300 dark:hover:bg-white/[0.08] dark:hover:text-zinc-100"
+        title="New Folder"
       >
-        <div className="flex items-center justify-between border-b border-white/40 px-4 py-3 dark:border-white/[0.06]">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-zinc-400" />
-            <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">문서</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="relative" ref={createMenuRef}>
-              <button
-                type="button"
-                disabled={isCreating}
-                onClick={() => setShowCreateMenu((prev) => !prev)}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-700 disabled:opacity-60 dark:text-zinc-300 dark:hover:bg-white/[0.08] dark:hover:text-zinc-100"
-                title="New File"
-              >
-                <FilePlus2 className="h-4 w-4" />
-              </button>
-              {showCreateMenu && (
-                <div className="absolute right-0 top-full z-[100] mt-1.5 min-w-[150px] rounded-xl border border-white/60 bg-white/40 py-1.5 backdrop-blur-3xl saturate-150 shadow-[0_8px_40px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(255,255,255,0.4),inset_0_0.5px_0_rgba(255,255,255,0.5)] dark:border-white/[0.1] dark:bg-zinc-900/40 dark:shadow-[0_8px_40px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.06),inset_0_0.5px_0_rgba(255,255,255,0.06)]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onCreateFile("screenplay");
-                      setShowCreateMenu(false);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-600 transition-all duration-100 hover:bg-white/40 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
-                  >
-                    <Film className="h-3.5 w-3.5" />
-                    <span>시나리오</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onCreateFile("document");
-                      setShowCreateMenu(false);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-600 transition-all duration-100 hover:bg-white/40 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                    <span>문서</span>
-                  </button>
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={onCreateFolder}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-700 dark:text-zinc-300 dark:hover:bg-white/[0.08] dark:hover:text-zinc-100"
-              title="New Folder"
-            >
-              <FolderPlus className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-700 disabled:opacity-60 dark:text-zinc-300 dark:hover:bg-white/[0.08] dark:hover:text-zinc-100"
-              title="Refresh"
-            >
-              <RefreshCw className={["h-4 w-4", isRefreshing ? "animate-spin" : ""].join(" ")} />
-            </button>
-          </div>
-        </div>
+        <FolderPlus className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={onRefresh}
+        disabled={isRefreshing}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-700 disabled:opacity-60 dark:text-zinc-300 dark:hover:bg-white/[0.08] dark:hover:text-zinc-100"
+        title="Refresh"
+      >
+        <RefreshCw className={["h-4 w-4", isRefreshing ? "animate-spin" : ""].join(" ")} />
+      </button>
+    </>
+  );
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => onSelectFolder(null)}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDropHint({ folderId: null, beforeDocumentId: null });
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                const draggedId = e.dataTransfer.getData("text/plain");
-                if (!draggedId) return;
-                onMoveDocument?.({
-                  draggedDocumentId: draggedId,
-                  targetFolderId: null,
-                  beforeDocumentId: null,
-                });
-                setDraggingDocumentId(null);
-                setDropHint(null);
-              }}
-              className={[
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
-                activeFolderId === null
-                  ? "bg-white/60 text-zinc-900 dark:bg-white/[0.1] dark:text-zinc-100"
-                  : "text-zinc-500 hover:bg-white/40 dark:text-zinc-300 dark:hover:bg-white/[0.06]",
-                dropHint?.folderId === null && !dropHint.beforeDocumentId
-                  ? "ring-1 ring-emerald-400/70"
-                  : "",
-              ].join(" ")}
-            >
-              <span
-                className="inline-flex h-3.5 w-3.5 items-center justify-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setRootExpanded((prev) => !prev);
+  return (
+    <SidebarPanel
+      side="left"
+      title="문서"
+      icon={<FileText className="h-4 w-4" />}
+      headerActions={headerActions}
+      bodyClassName="min-h-0 overflow-y-auto px-2 py-2"
+    >
+      <div className="space-y-1">
+        <button
+          type="button"
+          onClick={() => onSelectFolder(null)}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDropHint({ folderId: null, beforeDocumentId: null });
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const draggedId = e.dataTransfer.getData("text/plain");
+            if (!draggedId) return;
+            onMoveDocument?.({
+              draggedDocumentId: draggedId,
+              targetFolderId: null,
+              beforeDocumentId: null,
+            });
+            setDraggingDocumentId(null);
+            setDropHint(null);
+          }}
+          className={[
+            "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+            activeFolderId === null
+              ? "bg-white/60 text-zinc-900 dark:bg-white/[0.1] dark:text-zinc-100"
+              : "text-zinc-500 hover:bg-white/40 dark:text-zinc-300 dark:hover:bg-white/[0.06]",
+            dropHint?.folderId === null && !dropHint.beforeDocumentId ? "ring-1 ring-emerald-400/70" : "",
+          ].join(" ")}
+        >
+          <span
+            className="inline-flex h-3.5 w-3.5 items-center justify-center"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRootExpanded((prev) => !prev);
+            }}
+          >
+            {rootExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </span>
+          <span>{projectTitle}</span>
+        </button>
+        {rootExpanded && (
+          <div>
+            {(docsByFolder.get(null) ?? []).map((doc) => (
+              <div
+                key={doc.id}
+                style={{ marginLeft: INDENT_STEP }}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", doc.id);
+                  setDraggingDocumentId(doc.id);
                 }}
+                onDragEnd={() => {
+                  setDraggingDocumentId(null);
+                  setDropHint(null);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDropHint({ folderId: null, beforeDocumentId: doc.id });
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const draggedId = e.dataTransfer.getData("text/plain");
+                  if (!draggedId) return;
+                  onMoveDocument?.({
+                    draggedDocumentId: draggedId,
+                    targetFolderId: null,
+                    beforeDocumentId: doc.id,
+                  });
+                  setDraggingDocumentId(null);
+                  setDropHint(null);
+                }}
+                className={draggingDocumentId === doc.id ? "opacity-60" : ""}
               >
-                {rootExpanded ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
-                )}
-              </span>
-              <span>{projectTitle}</span>
-            </button>
-            {rootExpanded && (
-              <div>
-                {(docsByFolder.get(null) ?? []).map((doc) => (
-                  <div
-                    key={doc.id}
-                    style={{ marginLeft: INDENT_STEP }}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData("text/plain", doc.id);
-                      setDraggingDocumentId(doc.id);
-                    }}
-                    onDragEnd={() => {
-                      setDraggingDocumentId(null);
-                      setDropHint(null);
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setDropHint({ folderId: null, beforeDocumentId: doc.id });
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const draggedId = e.dataTransfer.getData("text/plain");
-                      if (!draggedId) return;
-                      onMoveDocument?.({
-                        draggedDocumentId: draggedId,
-                        targetFolderId: null,
-                        beforeDocumentId: doc.id,
-                      });
-                      setDraggingDocumentId(null);
-                      setDropHint(null);
-                    }}
-                    className={draggingDocumentId === doc.id ? "opacity-60" : ""}
-                  >
-                    <DocumentRow
-                      doc={doc}
-                      active={doc.id === currentDocumentId}
-                      onClick={() => onSelect(doc.id)}
-                      onRename={() => onRenameDocument?.(doc.id)}
-                      onDuplicate={() => onDuplicateDocument?.(doc.id)}
-                      onDelete={() => onDeleteDocument?.(doc.id)}
-                    />
-                  </div>
-                ))}
-
-                {(foldersByParent.get(null) ?? []).map((folder) => renderFolderNode(folder, 1))}
+                <DocumentRow
+                  doc={doc}
+                  active={doc.id === currentDocumentId}
+                  onClick={() => onSelect(doc.id)}
+                  onRename={() => onRenameDocument?.(doc.id)}
+                  onDuplicate={() => onDuplicateDocument?.(doc.id)}
+                  onDelete={() => onDeleteDocument?.(doc.id)}
+                />
               </div>
-            )}
+            ))}
 
-            {documents.length === 0 && (
-              <p className="px-3 py-2 text-xs text-zinc-400 dark:text-zinc-500">
-                아직 문서가 없습니다.
-              </p>
-            )}
+            {(foldersByParent.get(null) ?? []).map((folder) => renderFolderNode(folder, 1))}
+          </div>
+        )}
 
-            <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => onSelectFolder("__trash__")}
-              className={[
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
-                activeFolderId === "__trash__"
-                    ? "bg-white/60 text-zinc-900 dark:bg-white/[0.1] dark:text-zinc-100"
-                    : "text-zinc-500 hover:bg-white/40 dark:text-zinc-300 dark:hover:bg-white/[0.06]",
-                ].join(" ")}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span>휴지통</span>
-                <span className="ml-auto text-[10px] text-zinc-400">{trashedDocuments.length}</span>
-              </button>
-              {activeFolderId === "__trash__" && (
-                <div className="mt-1 space-y-1 pl-4">
-                  {trashedDocuments.length > 0 ? (
-                    trashedDocuments.map((doc) => (
-                      <DocumentRow
-                        key={doc.id}
-                        doc={doc}
-                        active={false}
-                        onClick={() => {}}
-                      />
-                    ))
-                  ) : (
-                    <p className="px-3 py-2 text-[11px] text-zinc-400 dark:text-zinc-500">휴지통이 비어 있습니다.</p>
-                  )}
-                </div>
+        {documents.length === 0 && (
+          <p className="px-3 py-2 text-xs text-zinc-400 dark:text-zinc-500">아직 문서가 없습니다.</p>
+        )}
+
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => onSelectFolder("__trash__")}
+            className={[
+              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+              activeFolderId === "__trash__"
+                ? "bg-white/60 text-zinc-900 dark:bg-white/[0.1] dark:text-zinc-100"
+                : "text-zinc-500 hover:bg-white/40 dark:text-zinc-300 dark:hover:bg-white/[0.06]",
+            ].join(" ")}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>휴지통</span>
+            <span className="ml-auto text-[10px] text-zinc-400">{trashedDocuments.length}</span>
+          </button>
+          {activeFolderId === "__trash__" && (
+            <div className="mt-1 space-y-1 pl-4">
+              {trashedDocuments.length > 0 ? (
+                trashedDocuments.map((doc) => <DocumentRow key={doc.id} doc={doc} active={false} onClick={() => {}} />)
+              ) : (
+                <p className="px-3 py-2 text-[11px] text-zinc-400 dark:text-zinc-500">휴지통이 비어 있습니다.</p>
               )}
             </div>
-          </div>
+          )}
         </div>
-      </aside>
-    </div>
+      </div>
+    </SidebarPanel>
   );
 }

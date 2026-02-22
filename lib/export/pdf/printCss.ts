@@ -1,4 +1,6 @@
 import type { PdfPageSettings } from "./types";
+import type { ResolvedScreenplaySpec } from "@/lib/editor/screenplayFormat/types";
+import { buildScreenplayPdfCssFromSpec } from "@/lib/editor/screenplayFormat/toPdfCss";
 
 function pxToIn(px: number) {
   return `${(px / 96).toFixed(4)}in`;
@@ -7,77 +9,6 @@ function pxToIn(px: number) {
 function pageSizeCss(pageSize: PdfPageSettings["pageSize"]) {
   return pageSize === "us_letter" ? "Letter" : "A4";
 }
-
-const screenplayCss = `
-.screenplay-root {
-  font-family: "Courier Prime", "Courier New", Courier, monospace;
-  color: #000;
-  font-size: 16px;
-  line-height: 1;
-  letter-spacing: 0;
-}
-.screenplay-root p {
-  margin: 0;
-  padding-left: 144px;
-  padding-right: 96px;
-}
-.screenplay-root .scene-heading {
-  position: relative;
-  margin-top: 2em;
-  margin-bottom: 0;
-  padding-left: 144px;
-  padding-right: 96px;
-  text-transform: uppercase;
-  counter-increment: scene-counter;
-}
-.screenplay-root .scene-heading::before {
-  content: counter(scene-counter) ".";
-  position: absolute;
-  left: 96px;
-}
-.screenplay-root .action {
-  margin-top: 1em;
-  margin-bottom: 0;
-  padding-left: 144px;
-  padding-right: 96px;
-}
-.screenplay-root .character {
-  margin-top: 1em;
-  margin-bottom: 0;
-  padding-left: 355px;
-  padding-right: 298px;
-  text-transform: uppercase;
-}
-.screenplay-root .dialogue {
-  margin-top: 0;
-  margin-bottom: 0;
-  padding-left: 240px;
-  padding-right: 192px;
-}
-.screenplay-root .parenthetical {
-  margin-top: 0;
-  margin-bottom: 0;
-  padding-left: 298px;
-  padding-right: 250px;
-  font-style: normal;
-}
-.screenplay-root .transition-block {
-  margin-top: 1em;
-  margin-bottom: 0;
-  padding-left: 144px;
-  padding-right: 96px;
-  text-align: right;
-  text-transform: uppercase;
-}
-.screenplay-root strong,
-.screenplay-root b {
-  font-weight: 400 !important;
-}
-.screenplay-root em,
-.screenplay-root i {
-  font-style: normal !important;
-}
-`;
 
 const documentCss = `
 .document-root {
@@ -111,15 +42,28 @@ const documentCss = `
 export function buildPdfPrintCss(
   documentType: "screenplay" | "document",
   pageSettings: PdfPageSettings,
-  embeddedFontCss = ""
+  embeddedFontCss = "",
+  screenplaySpec?: ResolvedScreenplaySpec | null
 ) {
   const { margins, pageSize } = pageSettings;
-  const pageMargins = documentType === "screenplay"
-    ? { top: margins.top, bottom: margins.bottom, left: 0, right: 0 }
-    : margins;
+  const effectivePageSize =
+    documentType === "screenplay" && screenplaySpec
+      ? (screenplaySpec.paper.key as PdfPageSettings["pageSize"])
+      : pageSize;
+  const pageMargins =
+    documentType === "screenplay" && screenplaySpec
+      ? {
+          top: screenplaySpec.paper.defaultMargins.top,
+          bottom: screenplaySpec.paper.defaultMargins.bottom,
+          left: 0,
+          right: 0,
+        }
+      : documentType === "screenplay"
+        ? { top: margins.top, bottom: margins.bottom, left: 0, right: 0 }
+        : margins;
   const base = `
   @page {
-    size: ${pageSizeCss(pageSize)};
+    size: ${documentType === "screenplay" && screenplaySpec ? screenplaySpec.paper.pageCssSize : pageSizeCss(effectivePageSize)};
     margin-top: ${pxToIn(pageMargins.top)};
     margin-bottom: ${pxToIn(pageMargins.bottom)};
     margin-left: ${pxToIn(pageMargins.left)};
@@ -134,6 +78,7 @@ export function buildPdfPrintCss(
   .print-root { width: 100%; box-sizing: border-box; }
   `;
 
+  const screenplayCss = screenplaySpec ? buildScreenplayPdfCssFromSpec(screenplaySpec) : "";
   return `${base}\n${embeddedFontCss}\n${
     documentType === "screenplay" ? screenplayCss : documentCss
   }`;

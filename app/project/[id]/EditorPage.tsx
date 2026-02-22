@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -32,16 +32,19 @@ import DocumentEditor from "@/components/editor/DocumentEditor";
 import DocumentToolbar from "@/components/editor/DocumentToolbar";
 import NavigatorSidebar from "@/components/editor/NavigatorSidebar";
 import DocumentsSidebar from "@/components/editor/DocumentsSidebar";
+import StyleSidebar from "@/components/editor/StyleSidebar";
 import AssistSidebar from "@/components/editor/AssistSidebar";
+import SidebarSwitchTransition from "@/components/editor/SidebarSwitchTransition";
 import NodeTypeDropdown from "@/components/editor/NodeTypeDropdown";
 import Ruler from "@/components/editor/Ruler";
 import LineNumbers from "@/components/editor/LineNumbers";
 import {
   PX_PER_INCH,
   PAGE_SIZE_PRESETS,
+  createPageRenderConfig,
 } from "@/lib/editor/pageEngine/config";
 import { usePageRender } from "@/lib/editor/pageEngine/usePageRender";
-import type { PageSizeKey, StoredPageRenderSettings } from "@/lib/editor/pageEngine/types";
+import type { PageSizeKey } from "@/lib/editor/pageEngine/types";
 import {
   createDocument,
   createDocumentFolder,
@@ -60,20 +63,48 @@ import {
   type DocumentType,
 } from "@/app/actions/document";
 import {
-  getProjectPageRenderSettings,
-  upsertProjectPageRenderSettings,
-} from "@/app/actions/pageRenderSettings";
+  getDocumentScreenplayRenderSettings,
+  upsertDocumentScreenplayRenderSettings,
+} from "@/app/actions/documentScreenplayRenderSettings";
 import type { JSONContent, Editor } from "@tiptap/react";
 import type { PdfExportRequest } from "@/lib/export/pdf/types";
+import { SCREENPLAY_FORMAT_OPTIONS } from "@/lib/editor/screenplayFormat/registry";
+import { PAPER_PRESETS } from "@/lib/editor/screenplayFormat/paperPresets";
+import { resolveScreenplaySpecFromSettings } from "@/lib/editor/screenplayFormat/resolve";
+import { resolveScreenplaySpecFromSources } from "@/lib/editor/screenplayFormat/resolve";
+import { screenplaySpecToCssVars } from "@/lib/editor/screenplayFormat/toCssVars";
+import type {
+  DocumentScreenplayRenderSettingsRow,
+  ScreenplayFontCoverageMap,
+  UserScreenplayCustomFormatRow,
+} from "@/lib/editor/screenplayFormat/types";
+import {
+  buildCompositeScreenplayFontCssForAliases,
+  SCREENPLAY_COMPOSITE_FONT_FAMILY,
+} from "@/lib/fonts/compositeScreenplayFont";
+import { inflateDialogueBlocks } from "@/lib/editor/screenplayRuntime/inflateDialogueBlocks";
+import { flattenDialogueBlocks } from "@/lib/editor/screenplayRuntime/flattenDialogueBlocks";
+import { buildScreenplayTransitionContext } from "@/lib/editor/transitions/context";
+import { findMatchingTransitionRule } from "@/lib/editor/transitions/engine";
+import {
+  describeScreenplayTransitionRuleForUi,
+  screenplayTransitionRules,
+} from "@/lib/editor/transitions/screenplayPolicy";
+import {
+  attachDocumentToCustomScreenplayFormatAction,
+  createCustomScreenplayFormatFromCurrentAction,
+  listUserScreenplayCustomFormatsAction,
+  updateCustomScreenplayBaseFontSizeAction,
+  updateCustomScreenplayFontCoverageAction,
+  updateCustomScreenplayNodeFontCoverageOverrideAtKeyAction,
+} from "@/app/actions/screenplayCustomFormats";
+import type { FontCatalogKey } from "@/lib/fonts/fontCatalog";
 
-const FORMAT_OPTIONS = [
-  { value: "us", label: "미국" },
-];
-
-const PAGE_SIZE_OPTIONS: { value: PageSizeKey; label: string }[] = [
-  { value: "a4", label: "A4 (8.27” × 11.69”)" },
-  { value: "us_letter", label: "US Letter (8.5” × 11”)" },
-];
+const FORMAT_OPTIONS = SCREENPLAY_FORMAT_OPTIONS.map((format) => ({
+  value: format.key,
+  label: format.label,
+  paperLabel: PAPER_PRESETS[format.paperPresetKey].label,
+}));
 
 const MENU_SURFACE_CLASS = [
   "rounded-xl py-1.5",
@@ -92,17 +123,17 @@ const MENU_ITEM_BASE_CLASS = [
 /* ── 포맷 선택 팝업 메뉴 ── */
 function FormatMenu({
   currentFormat,
-  currentPageSize,
   onFormatChange,
-  onPageSizeChange,
   isScreenplay,
+  customFormats,
+  onCloneToCustom,
   onClose,
 }: {
   currentFormat: string;
-  currentPageSize: PageSizeKey;
   onFormatChange: (v: string) => void;
-  onPageSizeChange: (v: PageSizeKey) => void;
   isScreenplay: boolean;
+  customFormats: Array<{ id: string; name: string }>;
+  onCloneToCustom: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -134,7 +165,7 @@ function FormatMenu({
             "justify-between text-zinc-600 dark:text-zinc-300 hover:bg-white/40 dark:hover:bg-white/[0.06]",
           ].join(" ")}
         >
-          <span>{opt.label}</span>
+          <span>{opt.label}{isScreenplay ? ` (${opt.paperLabel})` : ""}</span>
           {opt.value === currentFormat && (
             <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
           )}
@@ -143,18 +174,28 @@ function FormatMenu({
       {isScreenplay && (
         <>
           <div className="my-1 h-px bg-zinc-200/80 dark:bg-white/[0.08]" />
-          {PAGE_SIZE_OPTIONS.map((opt) => (
+          <button
+            type="button"
+            onClick={onCloneToCustom}
+            className={[
+              MENU_ITEM_BASE_CLASS,
+              "justify-between text-zinc-600 dark:text-zinc-300 hover:bg-white/40 dark:hover:bg-white/[0.06]",
+            ].join(" ")}
+          >
+            <span>커스텀으로 복제</span>
+          </button>
+          {customFormats.map((fmt) => (
             <button
-              key={opt.value}
+              key={fmt.id}
               type="button"
-              onClick={() => onPageSizeChange(opt.value)}
+              onClick={() => onFormatChange(fmt.id)}
               className={[
                 MENU_ITEM_BASE_CLASS,
                 "justify-between text-zinc-600 dark:text-zinc-300 hover:bg-white/40 dark:hover:bg-white/[0.06]",
               ].join(" ")}
             >
-              <span>{opt.label}</span>
-              {opt.value === currentPageSize && (
+              <span>{fmt.name}</span>
+              {currentFormat === fmt.id && (
                 <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
               )}
             </button>
@@ -272,7 +313,7 @@ export default function EditorPage({
   folders: DocumentFolder[];
   trashedDocuments: Document[];
 }) {
-  type LeftPanelType = "documents" | "navigator";
+  type LeftPanelType = "documents" | "navigator" | "style";
   const router = useRouter();
 
   /* ── 저장 상태 ── */
@@ -285,12 +326,15 @@ export default function EditorPage({
 
   /* ── 현재 노드타입 ── */
   const [currentNodeType, setCurrentNodeType] = useState("paragraph");
+  const [transitionHintVersion, setTransitionHintVersion] = useState(0);
 
   /* ── 현재 포맷 ── */
   const [currentFormat, setCurrentFormat] = useState("us");
-  const [currentPageSize, setCurrentPageSize] = useState<PageSizeKey>("a4");
-  const [screenplayRenderSettings, setScreenplayRenderSettings] =
-    useState<StoredPageRenderSettings | null>(null);
+  const [screenplayFormatSettings, setScreenplayFormatSettings] =
+    useState<DocumentScreenplayRenderSettingsRow | null>(null);
+  const [screenplayFormatSettingsLoading, setScreenplayFormatSettingsLoading] = useState(false);
+  const [screenplayFormatSettingsDocId, setScreenplayFormatSettingsDocId] = useState<string | null>(null);
+  const [customFormats, setCustomFormats] = useState<UserScreenplayCustomFormatRow[]>([]);
 
   /* ── 포맷 메뉴 토글 ── */
   const [showFormatMenu, setShowFormatMenu] = useState(false);
@@ -329,21 +373,14 @@ export default function EditorPage({
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const result = await getProjectPageRenderSettings(project.id);
-      if (cancelled || !result.data) return;
-      setScreenplayRenderSettings({
-        screenplay_page_size: result.data.screenplay_page_size,
-        screenplay_margins: result.data.screenplay_margins,
-        node_break_policies: result.data.node_break_policies,
-      });
-      if (result.data.screenplay_page_size) {
-        setCurrentPageSize(result.data.screenplay_page_size);
-      }
+      const result = await listUserScreenplayCustomFormatsAction();
+      if (cancelled) return;
+      setCustomFormats((result.data as UserScreenplayCustomFormatRow[]) ?? []);
     })();
     return () => {
       cancelled = true;
     };
-  }, [project.id]);
+  }, []);
 
   const openLeftPanel = useCallback((panel: LeftPanelType) => {
     if (leftPanelUnmountTimerRef.current) {
@@ -384,6 +421,7 @@ export default function EditorPage({
       const { $from } = editorInstance.state.selection;
       const nodeName = $from.parent.type.name;
       setCurrentNodeType(nodeName);
+      setTransitionHintVersion((prev) => prev + 1);
     };
 
     editorInstance.on("selectionUpdate", updateNodeType);
@@ -400,6 +438,10 @@ export default function EditorPage({
       if (!editorInstance) return;
       if (nodeType === "paragraph") {
         editorInstance.chain().focus().setParagraph().run();
+      } else if (nodeType === "character") {
+        editorInstance.chain().focus().insertDialogueBlockFromCharacter().run();
+      } else if (nodeType === "dialogue" || nodeType === "parenthetical") {
+        editorInstance.chain().focus().appendSpeechSegment(nodeType).run();
       } else {
         editorInstance.chain().focus().setNode(nodeType).run();
       }
@@ -412,10 +454,14 @@ export default function EditorPage({
     (content: JSONContent) => {
       const currentDocument = documentList.find((d) => d.id === currentDocumentId);
       if (!currentDocument) return;
+      const normalizedContent =
+        (currentDocument.document_type ?? "screenplay") === "screenplay"
+          ? (flattenDialogueBlocks(content) ?? content)
+          : content;
       setDocumentList((prev) =>
         prev.map((doc) =>
           doc.id === currentDocument.id
-            ? { ...doc, content }
+            ? { ...doc, content: normalizedContent }
             : doc
         )
       );
@@ -424,7 +470,7 @@ export default function EditorPage({
 
       saveTimerRef.current = setTimeout(async () => {
         setSaveStatus("saving");
-        const result = await saveDocument(currentDocument.id, content);
+        const result = await saveDocument(currentDocument.id, normalizedContent);
         setSaveStatus(result.success ? "saved" : "unsaved");
       }, 1500);
     },
@@ -437,30 +483,254 @@ export default function EditorPage({
   }, []);
 
   const currentDocument = documentList.find((d) => d.id === currentDocumentId) ?? null;
+  const normalizedScreenplayContent = useMemo(() => {
+    if (!currentDocument) return null;
+    if ((currentDocument.document_type ?? "screenplay") !== "screenplay") return currentDocument.content;
+    return inflateDialogueBlocks(currentDocument.content) ?? currentDocument.content;
+  }, [currentDocument]);
   const currentType = currentDocument?.document_type ?? "screenplay";
   const isDocumentMode = currentType !== "screenplay";
+  const isScreenplayFormatReady =
+    !!currentDocument &&
+    !isDocumentMode &&
+    !screenplayFormatSettingsLoading &&
+    screenplayFormatSettingsDocId === currentDocument.id;
+  const activeCustomFormat = useMemo(
+    () =>
+      customFormats.find((f) => f.id === (screenplayFormatSettings?.custom_format_id ?? null)) ??
+      null,
+    [customFormats, screenplayFormatSettings?.custom_format_id]
+  );
+  const resolvedScreenplaySpec = resolveScreenplaySpecFromSources({
+    settingsRow: screenplayFormatSettings,
+    customFormatRow: activeCustomFormat,
+  });
+  const screenplayRenderConfig = createPageRenderConfig({
+    pageSizeKey: resolvedScreenplaySpec.paper.key as PageSizeKey,
+    pageWidth: resolvedScreenplaySpec.paper.widthPx,
+    pageHeight: resolvedScreenplaySpec.paper.heightPx,
+    pageGap: resolvedScreenplaySpec.paper.defaultPageGap,
+    margins: resolvedScreenplaySpec.paper.defaultMargins,
+    nodeBreakPolicies: resolvedScreenplaySpec.breakPolicies,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!currentDocument || (currentDocument.document_type ?? "screenplay") !== "screenplay") {
+      setScreenplayFormatSettings(null);
+      setScreenplayFormatSettingsLoading(false);
+      setScreenplayFormatSettingsDocId(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setScreenplayFormatSettingsLoading(true);
+    setScreenplayFormatSettingsDocId(null);
+
+    void (async () => {
+      const result = await getDocumentScreenplayRenderSettings(currentDocument.id);
+      if (cancelled) return;
+      if (result.data) {
+        setScreenplayFormatSettings(result.data);
+        setCurrentFormat(result.data.custom_format_id ?? result.data.format_key);
+      } else {
+        setScreenplayFormatSettings(null);
+        setCurrentFormat("us");
+      }
+      setScreenplayFormatSettingsDocId(currentDocument.id);
+      setScreenplayFormatSettingsLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentDocument?.id, currentDocument?.document_type]);
+
   const render = usePageRender({
     editor: editorInstance,
     documentType: isDocumentMode ? "document" : "screenplay",
-    pageSizeKey: isDocumentMode ? "a4" : currentPageSize,
-    settings: isDocumentMode ? null : screenplayRenderSettings,
+    pageSizeKey: "a4",
+    configOverride: isDocumentMode ? null : screenplayRenderConfig,
   });
-  const screenplayPage = PAGE_SIZE_PRESETS[currentPageSize];
+  const screenplayPage = render.pageSize;
   const documentPage = PAGE_SIZE_PRESETS.a4;
   const activePage = isDocumentMode ? documentPage : render.pageSize;
   const activeRulerInches = activePage.width / PX_PER_INCH;
   const { pageCount, canvasHeight, pageGap, margins, lineNumberTopPadding } = render;
+  const screenplayStyleVars = screenplaySpecToCssVars(resolvedScreenplaySpec);
+  const screenplayCompositeFontCss = useMemo(() => {
+    const aliases = [
+      { alias: SCREENPLAY_COMPOSITE_FONT_FAMILY, coverage: resolvedScreenplaySpec.fontCoverage },
+      ...Object.entries(resolvedScreenplaySpec.nodeEffectiveFontCoverageMap).map(([nodeKey, coverage]) => ({
+        alias:
+          (resolvedScreenplaySpec.nodeCompositeFontFamilies[nodeKey as keyof typeof resolvedScreenplaySpec.nodeCompositeFontFamilies] ??
+            `"${SCREENPLAY_COMPOSITE_FONT_FAMILY}", Pretendard, sans-serif`)
+            .replace(/^"/, "")
+            .replace(/", Pretendard, sans-serif$/, ""),
+        coverage,
+      })),
+    ];
+    return buildCompositeScreenplayFontCssForAliases({
+      aliases,
+      mode: "web",
+    }).cssText;
+  }, [
+    resolvedScreenplaySpec.fontCoverage,
+    resolvedScreenplaySpec.nodeEffectiveFontCoverageMap,
+    resolvedScreenplaySpec.nodeCompositeFontFamilies,
+  ]);
 
-  const handlePageSizeChange = useCallback((nextPageSize: PageSizeKey) => {
-    setCurrentPageSize(nextPageSize);
-    setScreenplayRenderSettings((prev) => ({
-      ...(prev ?? {}),
-      screenplay_page_size: nextPageSize,
-    }));
-    void upsertProjectPageRenderSettings(project.id, {
-      screenplayPageSize: nextPageSize,
+  const screenplayKeyTransitionHints = useMemo(() => {
+    if (!editorInstance || isDocumentMode) return null;
+    try {
+      const context = buildScreenplayTransitionContext(editorInstance);
+      const enterRule = findMatchingTransitionRule({
+        key: "Enter",
+        context,
+        rules: screenplayTransitionRules,
+      });
+      const tabRule = findMatchingTransitionRule({
+        key: "Tab",
+        context,
+        rules: screenplayTransitionRules,
+      });
+      return {
+        nodeType: context.parentType,
+        cursorPosition: context.cursorPosition,
+        enter: {
+          ruleId: enterRule?.id,
+          label: describeScreenplayTransitionRuleForUi(enterRule?.id, "Enter"),
+        },
+        tab: {
+          ruleId: tabRule?.id,
+          label: describeScreenplayTransitionRuleForUi(tabRule?.id, "Tab"),
+        },
+      };
+    } catch {
+      return null;
+    }
+  }, [editorInstance, isDocumentMode, transitionHintVersion]);
+
+  const handleFormatChange = useCallback(async (nextFormat: string) => {
+    setCurrentFormat(nextFormat);
+    if (!currentDocument || (currentDocument.document_type ?? "screenplay") !== "screenplay") return;
+    if (nextFormat === "us" || nextFormat === "kr") {
+      const builtinFormat = nextFormat as "us" | "kr";
+      const result = await upsertDocumentScreenplayRenderSettings(currentDocument.id, {
+        formatKey: builtinFormat,
+        customFormatId: null,
+      });
+      if (result.success && result.data) {
+        setScreenplayFormatSettings(result.data);
+      } else if (result.error) {
+        window.alert(result.error);
+      }
+      return;
+    }
+    const attach = await attachDocumentToCustomScreenplayFormatAction({
+      documentId: currentDocument.id,
+      customFormatId: nextFormat,
     });
-  }, [project.id]);
+    if (!attach.success) {
+      window.alert(attach.error ?? "커스텀 포맷 적용에 실패했습니다.");
+      return;
+    }
+    const fresh = await getDocumentScreenplayRenderSettings(currentDocument.id);
+    if (fresh.data) {
+      setScreenplayFormatSettings(fresh.data);
+    }
+  }, [currentDocument]);
+
+  const handleCloneCurrentToCustomFormat = useCallback(async () => {
+    if (!currentDocument || (currentDocument.document_type ?? "screenplay") !== "screenplay") return;
+    const result = await createCustomScreenplayFormatFromCurrentAction({ documentId: currentDocument.id });
+    if (!result.success || !result.data) {
+      window.alert(result.error ?? "커스텀 포맷 복제에 실패했습니다.");
+      return;
+    }
+    setCustomFormats((prev) => [result.data as UserScreenplayCustomFormatRow, ...prev]);
+    setCurrentFormat(result.data.id);
+    const fresh = await getDocumentScreenplayRenderSettings(currentDocument.id);
+    if (fresh.data) setScreenplayFormatSettings(fresh.data);
+  }, [currentDocument]);
+
+  const handleChangeScreenplayFontCoverage = useCallback(async (next: ScreenplayFontCoverageMap) => {
+    const customFormatId = resolvedScreenplaySpec.customFormatId;
+    if (!customFormatId) return;
+    setCustomFormats((prev) =>
+      prev.map((fmt) => (fmt.id === customFormatId ? { ...fmt, font_coverage: next } : fmt))
+    );
+    const result = await updateCustomScreenplayFontCoverageAction({
+      customFormatId,
+      fontCoverage: next,
+    });
+    if (!result.success) {
+      window.alert(result.error ?? "폰트 설정 저장에 실패했습니다.");
+      const refresh = await listUserScreenplayCustomFormatsAction();
+      setCustomFormats((refresh.data as UserScreenplayCustomFormatRow[]) ?? []);
+    }
+  }, [resolvedScreenplaySpec.customFormatId]);
+
+  const handleChangeScreenplayBaseFontSize = useCallback(async (next: 14 | 16 | 18 | 20) => {
+    const customFormatId = resolvedScreenplaySpec.customFormatId;
+    if (!customFormatId) return;
+    setCustomFormats((prev) =>
+      prev.map((fmt) => (fmt.id === customFormatId ? { ...fmt, base_font_size: next } : fmt))
+    );
+    const result = await updateCustomScreenplayBaseFontSizeAction({
+      customFormatId,
+      baseFontSize: next,
+    });
+    if (!result.success) {
+      window.alert(result.error ?? "폰트 사이즈 저장에 실패했습니다.");
+      const refresh = await listUserScreenplayCustomFormatsAction();
+      setCustomFormats((refresh.data as UserScreenplayCustomFormatRow[]) ?? []);
+    }
+  }, [resolvedScreenplaySpec.customFormatId]);
+
+  const handleChangeScreenplayNodeFontCoverageAtKey = useCallback(async (
+    node: "sceneHeading" | "action" | "character" | "dialogue" | "parenthetical" | "transition" | "paragraph",
+    group: "latin" | "digits" | "punctuation" | "hangul" | "other",
+    fontKey: FontCatalogKey | null
+  ) => {
+    const customFormatId = resolvedScreenplaySpec.customFormatId;
+    if (!customFormatId) return;
+
+    setCustomFormats((prev) =>
+      prev.map((fmt) => {
+        if (fmt.id !== customFormatId) return fmt;
+        const nextOverrides = {
+          ...((fmt.node_font_coverage_overrides ?? {}) as NonNullable<UserScreenplayCustomFormatRow["node_font_coverage_overrides"]>),
+        };
+        const nodeOverrides = { ...(nextOverrides[node] ?? {}) };
+        if (fontKey === null) {
+          delete nodeOverrides[group];
+        } else {
+          nodeOverrides[group] = fontKey;
+        }
+        if (Object.keys(nodeOverrides).length === 0) {
+          delete nextOverrides[node];
+        } else {
+          nextOverrides[node] = nodeOverrides;
+        }
+        return { ...fmt, node_font_coverage_overrides: nextOverrides };
+      })
+    );
+
+    const result = await updateCustomScreenplayNodeFontCoverageOverrideAtKeyAction({
+      customFormatId,
+      node,
+      group,
+      fontKey,
+    });
+    if (!result.success) {
+      window.alert(result.error ?? "노드별 폰트 저장에 실패했습니다.");
+      const refresh = await listUserScreenplayCustomFormatsAction();
+      setCustomFormats((refresh.data as UserScreenplayCustomFormatRow[]) ?? []);
+    }
+  }, [resolvedScreenplaySpec.customFormatId]);
 
   const handleCreateDocument = useCallback(async (documentType: DocumentType = "screenplay") => {
     if (isCreatingDocument) return;
@@ -698,7 +968,7 @@ export default function EditorPage({
             ? currentDocument.content
             : { type: "doc", content: [{ type: "paragraph" }] },
         pageSettings: {
-          pageSize: isDocumentMode ? "a4" : currentPageSize,
+          pageSize: isDocumentMode ? "a4" : (resolvedScreenplaySpec.paper.key as PageSizeKey),
           margins: {
             top: margins.top,
             bottom: margins.bottom,
@@ -766,7 +1036,7 @@ export default function EditorPage({
     } finally {
       setIsExportingPdf(false);
     }
-  }, [currentDocument, currentPageSize, isDocumentMode, isExportingPdf, margins.bottom, margins.left, margins.right, margins.top, project.id]);
+  }, [currentDocument, isDocumentMode, isExportingPdf, margins.bottom, margins.left, margins.right, margins.top, project.id, resolvedScreenplaySpec.paper.key]);
 
   /* ── 헤더 버튼: 세로 아이콘+라벨 스타일 ── */
   const headerBtnClass = [
@@ -841,21 +1111,24 @@ export default function EditorPage({
             {showFormatMenu && (
               <FormatMenu
                 currentFormat={currentFormat}
-                currentPageSize={currentPageSize}
                 isScreenplay={!isDocumentMode}
-                onFormatChange={(v) => {
-                  setCurrentFormat(v);
-                  setShowFormatMenu(false);
+                customFormats={customFormats.map((f) => ({ id: f.id, name: f.name }))}
+                onCloneToCustom={() => {
+                  void handleCloneCurrentToCustomFormat();
                 }}
-                onPageSizeChange={(v) => {
-                  handlePageSizeChange(v);
+                onFormatChange={(v) => {
+                  void handleFormatChange(v);
                   setShowFormatMenu(false);
                 }}
                 onClose={() => setShowFormatMenu(false)}
               />
             )}
           </div>
-          <button className={headerBtnClass} title="스타일">
+          <button
+            className={`${headerBtnClass} ${leftPanel === "style" ? "bg-zinc-100/60 dark:bg-white/[0.06]" : ""}`}
+            title="스타일"
+            onClick={() => toggleLeftPanel("style")}
+          >
             <Palette className="h-4 w-4" />
             <span className="text-[10px]">스타일</span>
           </button>
@@ -956,42 +1229,67 @@ export default function EditorPage({
 
       {/* ===== 본문 (에디터 전체 폭 + 사이드바 오버레이) ===== */}
       <div className="relative flex-1 overflow-hidden">
-        {/* 왼쪽 사이드바 (오버레이 + 슬라이딩) */}
-        <div
-          className={[
-            "absolute left-0 top-0 bottom-0 z-30",
-            "transition-transform duration-300 ease-in-out",
-            leftPanel ? "translate-x-0" : "-translate-x-full",
-          ].join(" ")}
-        >
-          {renderedLeftPanel === "documents" && (
-            <DocumentsSidebar
-              documents={documentList}
-              trashedDocuments={trashedDocumentList}
-              folders={folderList}
-              projectTitle={project.title}
-              currentDocumentId={currentDocumentId}
-              activeFolderId={activeFolderId}
-              onSelect={handleSelectDocument}
-              onSelectFolder={setActiveFolderId}
-              onCreateFile={handleCreateDocument}
-              onCreateFolder={handleCreateFolder}
-              onMoveDocument={handleMoveDocument}
-              onRenameDocument={handleRenameDocument}
-              onDuplicateDocument={handleDuplicateDocument}
-              onDeleteDocument={handleDeleteDocument}
-              onRenameFolder={handleRenameFolder}
-              onDuplicateFolder={handleDuplicateFolder}
-              onDeleteFolder={handleDeleteFolder}
-              onRefresh={handleRefreshDocuments}
-              isCreating={isCreatingDocument}
-              isRefreshing={isRefreshingDocuments}
-            />
-          )}
-          {renderedLeftPanel === "navigator" && (
-            <NavigatorSidebar editor={editorInstance} />
-          )}
-        </div>
+        {/* 왼쪽 사이드바 (오버레이 + 공통 슬라이드/스위치 애니메이션) */}
+        <SidebarSwitchTransition
+          side="left"
+          isOpen={!!leftPanel}
+          activeKey={renderedLeftPanel}
+          renderPanel={(panelKey) => {
+            if (panelKey === "documents") {
+              return (
+                <DocumentsSidebar
+                  documents={documentList}
+                  trashedDocuments={trashedDocumentList}
+                  folders={folderList}
+                  projectTitle={project.title}
+                  currentDocumentId={currentDocumentId}
+                  activeFolderId={activeFolderId}
+                  onSelect={handleSelectDocument}
+                  onSelectFolder={setActiveFolderId}
+                  onCreateFile={handleCreateDocument}
+                  onCreateFolder={handleCreateFolder}
+                  onMoveDocument={handleMoveDocument}
+                  onRenameDocument={handleRenameDocument}
+                  onDuplicateDocument={handleDuplicateDocument}
+                  onDeleteDocument={handleDeleteDocument}
+                  onRenameFolder={handleRenameFolder}
+                  onDuplicateFolder={handleDuplicateFolder}
+                  onDeleteFolder={handleDeleteFolder}
+                  onRefresh={handleRefreshDocuments}
+                  isCreating={isCreatingDocument}
+                  isRefreshing={isRefreshingDocuments}
+                />
+              );
+            }
+
+            if (panelKey === "navigator") {
+              return <NavigatorSidebar editor={editorInstance} />;
+            }
+
+            return (
+              <StyleSidebar
+                isScreenplay={!isDocumentMode}
+                fontCoverage={isDocumentMode ? null : resolvedScreenplaySpec.fontCoverage}
+                baseFontSize={isDocumentMode ? null : resolvedScreenplaySpec.baseFontSize}
+                nodeFontCoverageOverrides={isDocumentMode ? null : resolvedScreenplaySpec.nodeFontCoverageOverrides}
+                builtinLocked={!isDocumentMode && resolvedScreenplaySpec.source === "builtin"}
+                activeFormatLabel={!isDocumentMode ? (activeCustomFormat?.name ?? resolvedScreenplaySpec.formatLabel) : undefined}
+                onCloneToCustom={() => {
+                  void handleCloneCurrentToCustomFormat();
+                }}
+                onChangeBaseFontSize={(next) => {
+                  void handleChangeScreenplayBaseFontSize(next);
+                }}
+                onChangeFontCoverage={(next) => {
+                  void handleChangeScreenplayFontCoverage(next);
+                }}
+                onChangeNodeFontCoverageAtKey={(node, group, fontKey) => {
+                  void handleChangeScreenplayNodeFontCoverageAtKey(node, group, fontKey);
+                }}
+              />
+            );
+          }}
+        />
 
         {/* 에디터 (전체 폭) */}
         <main className="flex h-full flex-col overflow-hidden bg-gradient-to-b from-gray-100/50 to-gray-50/50 dark:from-zinc-900/50 dark:to-zinc-950/50">
@@ -1132,6 +1430,72 @@ export default function EditorPage({
               </div>
 
             <div className="flex flex-1 flex-col items-center overflow-y-auto px-8">
+              {!isScreenplayFormatReady ? (
+                <>
+                  <div
+                    className="sticky top-0 z-20 shrink-0 pt-4 pb-0 bg-gradient-to-b from-gray-100/80 via-gray-100/60 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/60 dark:to-transparent"
+                    style={{ width: screenplayPage.width }}
+                  >
+                    <div
+                      className="h-8 rounded-t-md border border-zinc-200/60 bg-white/70 dark:border-white/[0.06] dark:bg-zinc-900/70"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div
+                    className="relative shrink-0"
+                    style={{
+                      width: screenplayPage.width,
+                      minHeight: screenplayPage.height + pageGap + Math.floor(screenplayPage.height * 0.15),
+                    }}
+                  >
+                    {[0, 1].map((i) => (
+                      <div
+                        key={i}
+                        className={[
+                          "absolute left-0 overflow-hidden",
+                          "bg-white dark:bg-zinc-900",
+                          "border border-zinc-200/60 dark:border-white/[0.06]",
+                          "shadow-[0_8px_32px_rgba(0,0,0,0.08),0_0_0_1px_rgba(255,255,255,0.3)]",
+                          "dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]",
+                        ].join(" ")}
+                        style={{
+                          top: i * (screenplayPage.height + pageGap),
+                          width: screenplayPage.width,
+                          height: screenplayPage.height,
+                          opacity: i === 0 ? 1 : 0.55,
+                        }}
+                        aria-hidden="true"
+                      >
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            paddingTop: resolvedScreenplaySpec.paper.defaultMargins.top,
+                            paddingBottom: resolvedScreenplaySpec.paper.defaultMargins.bottom,
+                            paddingLeft: resolvedScreenplaySpec.paper.defaultMargins.left,
+                            paddingRight: resolvedScreenplaySpec.paper.defaultMargins.right,
+                          }}
+                        >
+                          <div className="space-y-3 pt-2">
+                            <div className="h-4 w-[58%] rounded bg-zinc-200/80 dark:bg-white/[0.08]" />
+                            <div className="h-4 w-[70%] rounded bg-zinc-200/70 dark:bg-white/[0.07]" />
+                            <div className="h-4 w-[46%] rounded bg-zinc-200/70 dark:bg-white/[0.07]" />
+                            <div className="h-6" />
+                            <div className="ml-[32%] h-4 w-[12%] rounded bg-zinc-200/80 dark:bg-white/[0.08]" />
+                            <div className="ml-[40%] h-4 w-[42%] rounded bg-zinc-200/70 dark:bg-white/[0.07]" />
+                            <div className="ml-[40%] h-4 w-[36%] rounded bg-zinc-200/70 dark:bg-white/[0.07]" />
+                            <div className="h-6" />
+                            <div className="h-4 w-[64%] rounded bg-zinc-200/70 dark:bg-white/[0.07]" />
+                            <div className="h-4 w-[52%] rounded bg-zinc-200/70 dark:bg-white/[0.07]" />
+                          </div>
+                        </div>
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/35 to-transparent dark:via-white/[0.03] animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="h-12 shrink-0" />
+                </>
+              ) : (
+                <>
               {/* Ruler — A4 폭, 상단 고정 */}
               <div className="sticky top-0 z-20 shrink-0 pt-4 pb-0 bg-gradient-to-b from-gray-100/80 via-gray-100/60 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/60 dark:to-transparent" style={{ width: screenplayPage.width }}>
                 <Ruler
@@ -1188,9 +1552,12 @@ export default function EditorPage({
                   {currentDocument ? (
                     <ScenarioEditor
                       key={currentDocument.id}
-                      content={currentDocument.content}
+                      content={normalizedScreenplayContent}
                       onUpdate={handleUpdate}
                       onEditorReady={handleEditorReady}
+                      style={screenplayStyleVars}
+                      fontFaceCssText={screenplayCompositeFontCss}
+                      layoutMode={resolvedScreenplaySpec.layoutMode}
                     />
                   ) : (
                     <p className="text-center text-sm text-zinc-400">
@@ -1202,24 +1569,58 @@ export default function EditorPage({
 
               {/* 용지 아래 여백 */}
               <div className="h-12 shrink-0" />
+                </>
+              )}
             </div>
+
+            {isScreenplayFormatReady ? (
+            <div className="shrink-0 px-8 pb-3">
+              <div
+                className={[
+                  "mx-auto flex w-full max-w-[980px] items-center justify-between gap-3 rounded-xl px-3 py-2",
+                  "bg-white/35 dark:bg-white/[0.04]",
+                  "backdrop-blur-2xl",
+                  "border border-white/60 dark:border-white/[0.1]",
+                  "shadow-[0_4px_24px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.5)]",
+                  "dark:shadow-[0_4px_24px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.04)]",
+                  "min-h-[40px]",
+                ].join(" ")}
+              >
+                <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  현재 노드: <span className="text-zinc-700 dark:text-zinc-200">{screenplayKeyTransitionHints?.nodeType ?? currentNodeType}</span>
+                  {screenplayKeyTransitionHints?.cursorPosition ? (
+                    <span className="ml-2">커서: {screenplayKeyTransitionHints.cursorPosition}</span>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <div className="inline-flex items-center gap-2 rounded-md border border-zinc-200/70 bg-white/60 px-2 py-1 text-zinc-700 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-zinc-200">
+                    <span className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">[Tab]</span>
+                    <span>{screenplayKeyTransitionHints?.tab.label ?? "기본 탭 동작"}</span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-md border border-zinc-200/70 bg-white/60 px-2 py-1 text-zinc-700 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-zinc-200">
+                    <span className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">[Enter]</span>
+                    <span>{screenplayKeyTransitionHints?.enter.label ?? "기본 줄바꿈/노드 동작"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            ) : null}
             </div>
           )}
         </main>
 
-        {/* 오른쪽 사이드바 (오버레이 + 슬라이딩) */}
-        <div
-          className={[
-            "absolute right-0 top-0 bottom-0 z-30",
-            "transition-transform duration-300 ease-in-out",
-            showAssist ? "translate-x-0" : "translate-x-full",
-          ].join(" ")}
-        >
-          <AssistSidebar
-            documentId={currentDocument?.id}
-            projectId={project.id}
-          />
-        </div>
+        {/* 오른쪽 사이드바 (오버레이 + 공통 슬라이드/스위치 애니메이션) */}
+        <SidebarSwitchTransition
+          side="right"
+          isOpen={showAssist}
+          activeKey="assist"
+          renderPanel={() => (
+            <AssistSidebar
+              documentId={currentDocument?.id}
+              projectId={project.id}
+            />
+          )}
+        />
       </div>
     </div>
   );

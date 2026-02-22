@@ -37,6 +37,32 @@ export const DEFAULT_NODE_BREAK_POLICIES: NodeBreakPolicyMap = {
   unknown: "block_only",
 };
 
+export function createPageRenderConfig(args: {
+  pageSizeKey: PageSizeKey;
+  pageWidth: number;
+  pageHeight: number;
+  pageGap?: number;
+  margins?: Partial<PageMargins>;
+  nodeBreakPolicies?: Partial<NodeBreakPolicyMap>;
+}): PageRenderConfig {
+  return {
+    pageSizeKey: args.pageSizeKey,
+    pageWidth: args.pageWidth,
+    pageHeight: args.pageHeight,
+    pageGap: args.pageGap ?? DEFAULT_PAGE_GAP,
+    margins: {
+      top: args.margins?.top ?? DEFAULT_PAGE_MARGINS.top,
+      bottom: args.margins?.bottom ?? DEFAULT_PAGE_MARGINS.bottom,
+      left: args.margins?.left ?? DEFAULT_PAGE_MARGINS.left,
+      right: args.margins?.right ?? DEFAULT_PAGE_MARGINS.right,
+    },
+    nodeBreakPolicies: {
+      ...DEFAULT_NODE_BREAK_POLICIES,
+      ...(args.nodeBreakPolicies ?? {}),
+    },
+  };
+}
+
 export function resolvePageRenderConfig(
   pageSizeKey: PageSizeKey,
   settings?: StoredPageRenderSettings | null
@@ -46,20 +72,12 @@ export function resolvePageRenderConfig(
   const incomingMargins = settings?.screenplay_margins ?? null;
   const incomingPolicies = settings?.node_break_policies ?? null;
 
-  return {
+  return createPageRenderConfig({
     pageSizeKey: resolvedPageSize,
     pageWidth: page.width,
     pageHeight: page.height,
     pageGap: DEFAULT_PAGE_GAP,
-    margins: {
-      top: incomingMargins?.top ?? DEFAULT_PAGE_MARGINS.top,
-      bottom: incomingMargins?.bottom ?? DEFAULT_PAGE_MARGINS.bottom,
-      left: incomingMargins?.left ?? DEFAULT_PAGE_MARGINS.left,
-      right: incomingMargins?.right ?? DEFAULT_PAGE_MARGINS.right,
-    },
-    nodeBreakPolicies: {
-      ...DEFAULT_NODE_BREAK_POLICIES,
-      ...(incomingPolicies ?? {}),
-    },
-  };
+    margins: incomingMargins ?? undefined,
+    nodeBreakPolicies: incomingPolicies ?? undefined,
+  });
 }

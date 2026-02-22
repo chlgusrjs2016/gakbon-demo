@@ -20,23 +20,32 @@ import { Dialogue } from "./extensions/Dialogue";
 import { Parenthetical } from "./extensions/Parenthetical";
 import { Transition } from "./extensions/Transition";
 import { TabCycleNodes } from "./extensions/TabCycleNodes";
+import { DialogueBlock } from "./extensions/DialogueBlock";
+import { SpeechFlow } from "./extensions/SpeechFlow";
+import { DialogueBlockEditing } from "./extensions/DialogueBlockEditing";
 
 export const scenarioExtensions = [
+  DialogueBlock,
+  SpeechFlow,
   SceneHeading,
   Action,
   Character,
   Dialogue,
   Parenthetical,
   Transition,
+  DialogueBlockEditing,
   TabCycleNodes,
 ];
 
 export {
+  DialogueBlock,
+  SpeechFlow,
   SceneHeading,
   Action,
   Character,
   Dialogue,
   Parenthetical,
   Transition,
+  DialogueBlockEditing,
   TabCycleNodes,
 };

@@ -74,11 +74,11 @@ body {
 .scenario-editor-content {
   outline: none;
   display: flow-root;
-  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
-  font-size: 16px;
-  line-height: 1;
-  letter-spacing: 0;
-  color: #000000;
+  font-family: var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace);
+  font-size: var(--sp-base-fs, 16px);
+  line-height: var(--sp-base-lh, 1);
+  letter-spacing: var(--sp-base-ls, 0px);
+  color: var(--sp-base-color, #000000);
   box-sizing: border-box;
   /* 씬 헤딩 자동 넘버링 카운터 초기화 */
   counter-reset: scene-counter;
@@ -173,14 +173,14 @@ body {
 /* ── 공통: 일반 (paragraph) ──
  * 좌 1.5" (144px), 우 1" (96px) */
 .scenario-editor p {
-  margin-top: 0;
-  margin-bottom: 0;
-  padding-left: 144px;
-  padding-right: 96px;
-  font-size: 16px;
-  line-height: 1;
-  letter-spacing: 0;
-  color: #000000;
+  margin-top: var(--sp-p-mt, 0);
+  margin-bottom: var(--sp-p-mb, 0);
+  padding-left: var(--sp-p-pl, 144px);
+  padding-right: var(--sp-p-pr, 96px);
+  font-size: var(--sp-p-fs, var(--sp-base-fs, 16px));
+  line-height: var(--sp-p-lh, var(--sp-base-lh, 1));
+  letter-spacing: var(--sp-p-ls, var(--sp-base-ls, 0px));
+  color: var(--sp-p-color, var(--sp-base-color, #000000));
 }
 
 /* ── 씬 헤딩 ──
@@ -188,18 +188,18 @@ body {
  * 넘버링은 좌 1" (96px)에 absolute 배치 */
 .scenario-editor .scene-heading {
   position: relative;
-  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
-  font-weight: 400;
-  font-size: 16px;
-  text-transform: uppercase;
-  letter-spacing: 0;
-  line-height: 1;
-  margin-top: 2em;
-  margin-bottom: 0;
-  padding-left: 144px;
-  padding-right: 96px;
+  font-family: var(--sp-scene-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
+  font-weight: var(--sp-scene-fw, 400);
+  font-size: var(--sp-scene-fs, var(--sp-base-fs, 16px));
+  text-transform: var(--sp-scene-tt, uppercase);
+  letter-spacing: var(--sp-scene-ls, var(--sp-base-ls, 0px));
+  line-height: var(--sp-scene-lh, var(--sp-base-lh, 1));
+  margin-top: var(--sp-scene-mt, 2em);
+  margin-bottom: var(--sp-scene-mb, 0);
+  padding-left: var(--sp-scene-pl, 144px);
+  padding-right: var(--sp-scene-pr, 96px);
   counter-increment: scene-counter;
-  color: #000000;
+  color: var(--sp-scene-color, var(--sp-base-color, #000000));
 }
 
 /* 첫 번째 요소 상단 마진 초기화 (scene-heading은 예외) */
@@ -211,21 +211,25 @@ body {
   content: counter(scene-counter) ".";
   position: absolute;
   left: 96px;
-  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
-  font-weight: 400;
+  font-family: var(--sp-scene-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
+  font-weight: var(--sp-scene-fw, 400);
+}
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .scene-heading::before {
+  content: "#" counter(scene-counter) ".";
 }
 
 /* ── 지문 (Action) ──
  * 좌 1.5" (144px), 우 1" (96px) */
 .scenario-editor .action {
-  margin-top: 1em;
-  margin-bottom: 0;
-  padding-left: 144px;
-  padding-right: 96px;
-  font-size: 16px;
-  line-height: 1;
-  letter-spacing: 0;
-  color: #000000;
+  font-family: var(--sp-action-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
+  margin-top: var(--sp-action-mt, 1em);
+  margin-bottom: var(--sp-action-mb, 0);
+  padding-left: var(--sp-action-pl, 144px);
+  padding-right: var(--sp-action-pr, 96px);
+  font-size: var(--sp-action-fs, var(--sp-base-fs, 16px));
+  line-height: var(--sp-action-lh, var(--sp-base-lh, 1));
+  letter-spacing: var(--sp-action-ls, var(--sp-base-ls, 0px));
+  color: var(--sp-action-color, var(--sp-base-color, #000000));
 }
 
 /* ── 등장인물 하이라이트 (네비게이터에서 인물 클릭 시) ── */
@@ -244,60 +248,396 @@ body {
 /* ── 등장인물 (Character) ──
  * 좌 3.7" (355px), 우 3.1" (298px) */
 .scenario-editor .character {
-  font-weight: 400;
-  font-size: 16px;
-  text-transform: uppercase;
-  letter-spacing: 0;
-  line-height: 1;
-  margin-top: 1em;
-  margin-bottom: 0;
-  padding-left: 355px;
-  padding-right: 298px;
-  color: #000000;
+  font-family: var(--sp-character-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
+  font-weight: var(--sp-character-fw, 400);
+  font-size: var(--sp-character-fs, var(--sp-base-fs, 16px));
+  text-transform: var(--sp-character-tt, uppercase);
+  letter-spacing: var(--sp-character-ls, var(--sp-base-ls, 0px));
+  line-height: var(--sp-character-lh, var(--sp-base-lh, 1));
+  margin-top: var(--sp-character-mt, 1em);
+  margin-bottom: var(--sp-character-mb, 0);
+  padding-left: var(--sp-character-pl, 355px);
+  padding-right: var(--sp-character-pr, 298px);
+  color: var(--sp-character-color, var(--sp-base-color, #000000));
 }
 
 /* ── 대사 (Dialogue) ──
  * 좌 2.5" (240px), 우 2" (192px) */
 .scenario-editor .dialogue {
-  margin-top: 0em;
-  margin-bottom: 0;
-  padding-left: 240px;
-  padding-right: 192px;
-  font-size: 16px;
-  line-height: 1;
-  letter-spacing: 0;
-  color: #000000;
+  font-family: var(--sp-dialogue-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
+  margin-top: var(--sp-dialogue-mt, 0);
+  margin-bottom: var(--sp-dialogue-mb, 0);
+  padding-left: var(--sp-dialogue-pl, 240px);
+  padding-right: var(--sp-dialogue-pr, 192px);
+  font-size: var(--sp-dialogue-fs, var(--sp-base-fs, 16px));
+  line-height: var(--sp-dialogue-lh, var(--sp-base-lh, 1));
+  letter-spacing: var(--sp-dialogue-ls, var(--sp-base-ls, 0px));
+  color: var(--sp-dialogue-color, var(--sp-base-color, #000000));
 }
 
 /* ── 괄호지시 (Parenthetical) ──
  * 좌 3.1" (298px), 우 2.6" (250px) */
 .scenario-editor .parenthetical {
-  font-style: normal;
-  font-size: 16px;
-  line-height: 1;
-  letter-spacing: 0;
-  margin-top: 0em;
+  font-family: var(--sp-parenthetical-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
+  font-style: var(--sp-parenthetical-fst, normal);
+  font-size: var(--sp-parenthetical-fs, var(--sp-base-fs, 16px));
+  line-height: var(--sp-parenthetical-lh, var(--sp-base-lh, 1));
+  letter-spacing: var(--sp-parenthetical-ls, var(--sp-base-ls, 0px));
+  margin-top: var(--sp-parenthetical-mt, 0);
+  margin-bottom: var(--sp-parenthetical-mb, 0);
+  padding-left: var(--sp-parenthetical-pl, 298px);
+  padding-right: var(--sp-parenthetical-pr, 250px);
+  color: var(--sp-parenthetical-color, var(--sp-base-color, #000000));
+}
+
+/* ── dialogueBlock / speechFlow (런타임 그룹노드 + NodeView) ── */
+.scenario-editor .dialogue-block,
+.scenario-editor .react-renderer.node-dialogueBlock {
+  margin-top: var(--sp-character-mt, 1em);
   margin-bottom: 0;
-  padding-left: 298px;
-  padding-right: 250px;
-  color: #000000;
+}
+
+.scenario-editor .dialogue-block > .dialogue-block__content,
+.scenario-editor .react-renderer.node-dialogueBlock > .dialogue-block__content {
+  display: block;
+}
+
+.scenario-editor .dialogue-block > .dialogue-block__content > [data-type="character"] {
+  margin-top: 0 !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock {
+  margin-top: 1em;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > [data-type="character"] {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.scenario-editor .dialogue-block .speech-flow__content,
+.scenario-editor .react-renderer.node-dialogueBlock .speech-flow__content,
+.scenario-editor .react-renderer.node-speechFlow > .speech-flow__content {
+  display: block;
+}
+
+/* US: 기존 block 흐름과 유사하게 유지 */
+.scenario-editor[data-layout-mode="us_dialogue_block"] .dialogue-block > .dialogue-block__content > [data-type="character"] {
+  padding-left: var(--sp-character-pl, 355px);
+  padding-right: var(--sp-character-pr, 298px);
+}
+
+.scenario-editor[data-layout-mode="us_dialogue_block"] .dialogue-block .speech-flow__content > .dialogue {
+  margin-top: 0 !important;
+}
+
+.scenario-editor[data-layout-mode="us_dialogue_block"] .dialogue-block .speech-flow__content > .parenthetical,
+.scenario-editor[data-layout-mode="us_dialogue_block"] .dialogue-block .speech-flow__content > .dialogue {
+  display: block;
+}
+
+/* KR: character lane + speech lane */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock > .dialogue-block > .dialogue-block__content,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .dialogue-block__content {
+  display: grid;
+  grid-template-columns: var(--sp-lane-character-width, 96px) minmax(0, var(--sp-lane-speech-width, 410px));
+  column-gap: var(--sp-lane-speech-gap, 0px);
+  padding-left: var(--sp-lane-row-pl, 192px);
+  align-items: start;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > [data-type="character"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .dialogue-block__content > [data-type="character"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  text-align: left !important;
+  grid-column: 1;
+  align-self: start;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > [data-type="speech-flow"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > .react-renderer.node-speechFlow,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .dialogue-block__content > [data-type="speech-flow"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .dialogue-block__content > .react-renderer.node-speechFlow {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  grid-column: 2;
+  align-self: start;
+  min-width: 0;
+}
+
+/* Tiptap React NodeView may insert an extra wrapper div around semantic nodes.
+ * Make KR lane layout resilient to that wrapper layer.
+ */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > *:has(> [data-type="character"]) {
+  grid-column: 1;
+  align-self: start;
+  min-width: 0;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > *:has(> [data-type="speech-flow"]) {
+  grid-column: 2;
+  align-self: start;
+  width: 100%;
+  min-width: 0;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock > .dialogue-block__content > .react-renderer.node-speechFlow {
+  grid-column: 2;
+  align-self: start;
+  width: 100%;
+  min-width: 0;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .dialogue-block__content > *:has(> [data-type="character"]) {
+  grid-column: 1;
+  align-self: start;
+  min-width: 0;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .dialogue-block__content > *:has(> [data-type="speech-flow"]) {
+  grid-column: 2;
+  align-self: start;
+  width: 100%;
+  min-width: 0;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > *:has(> [data-type="character"]) > [data-type="character"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  text-align: left !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > *:has(> [data-type="speech-flow"]) > [data-type="speech-flow"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-width: 0;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .dialogue-block__content > *:has(> [data-type="speech-flow"]) > [data-type="speech-flow"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-width: 0;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-speechFlow > .speech-flow > .speech-flow__content,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-speechFlow > .speech-flow__content,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+  justify-content: normal !important;
+  align-items: initial !important;
+  align-content: initial !important;
+  gap: 0 !important;
+}
+
+/* Same wrapper-layer resilience inside speechFlow.
+ * Flatten wrapper boxes so segments can flow as one paragraph.
+ */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > *:has(> [data-type="dialogue"]),
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > *:has(> [data-type="parenthetical"]),
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > *:has(> [data-type="dialogue"]),
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > *:has(> [data-type="parenthetical"]) {
+  display: contents !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+  flex: none !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block [data-type="dialogue"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block [data-type="parenthetical"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock [data-type="dialogue"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock [data-type="parenthetical"] {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > .dialogue,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > .parenthetical,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > .dialogue,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > .parenthetical {
+  display: inline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  flex: none !important;
+  text-align: left !important;
+  white-space: normal !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > *:has(> [data-type="dialogue"]) > [data-type="dialogue"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > *:has(> [data-type="parenthetical"]) > [data-type="parenthetical"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > *:has(> [data-type="dialogue"]) > [data-type="dialogue"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > *:has(> [data-type="parenthetical"]) > [data-type="parenthetical"] {
+  display: inline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  flex: none !important;
+  text-align: left !important;
+  white-space: normal !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > .dialogue:empty,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > .parenthetical:empty,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > .dialogue:empty,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > .parenthetical:empty {
+  display: inline-block;
+  min-width: 1ch;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > *:has(> [data-type="dialogue"]:empty) > [data-type="dialogue"]:empty,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > *:has(> [data-type="parenthetical"]:empty) > [data-type="parenthetical"]:empty,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > *:has(> [data-type="dialogue"]:empty) > [data-type="dialogue"]:empty,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > *:has(> [data-type="parenthetical"]:empty) > [data-type="parenthetical"]:empty {
+  display: inline-block;
+  min-width: 1ch;
+}
+
+/* KR speechFlow: 인접 세그먼트 기본 간격 = 0.5em (인라인 흐름).
+ * 이후 dialogue -> dialogue 규칙에서 줄바꿈 + 간격 0으로 override.
+ */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .speech-flow__content
+  > :is([data-type="dialogue"], [data-type="parenthetical"])
+  + :is([data-type="dialogue"], [data-type="parenthetical"]) {
+  margin-left: var(--sp-speech-inline-gap, 0.5em) !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .speech-flow__content
+  > *:has(> :is([data-type="dialogue"], [data-type="parenthetical"]))
+  + *:has(> :is([data-type="dialogue"], [data-type="parenthetical"]))
+  > :is([data-type="dialogue"], [data-type="parenthetical"]) {
+  margin-left: var(--sp-speech-inline-gap, 0.5em) !important;
+}
+
+/* KR speechFlow: dialogue -> dialogue 는 새 줄로 시작 (같은 문단 내 줄바꿈) */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > [data-type="dialogue"] + [data-type="dialogue"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > [data-type="dialogue"] + [data-type="dialogue"] {
+  display: inline !important;
+  margin-left: 0 !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > *:has(> [data-type="dialogue"]) + *:has(> [data-type="dialogue"]) > [data-type="dialogue"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > *:has(> [data-type="dialogue"]) + *:has(> [data-type="dialogue"]) > [data-type="dialogue"] {
+  display: inline !important;
+  margin-left: 0 !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > [data-type="dialogue"] + [data-type="dialogue"]::before,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > [data-type="dialogue"] + [data-type="dialogue"]::before {
+  content: "\A";
+  white-space: pre;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block .speech-flow__content > *:has(> [data-type="dialogue"]) + *:has(> [data-type="dialogue"]) > [data-type="dialogue"]::before,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock .speech-flow__content > *:has(> [data-type="dialogue"]) + *:has(> [data-type="dialogue"]) > [data-type="dialogue"]::before {
+  content: "\A";
+  white-space: pre;
+}
+
+/* 방어: speechFlow wrapper가 비정상적으로 없거나 flatten된 런타임이 섞여도 speech 노드는 lane 2에 고정 */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > [data-type="parenthetical"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > [data-type="dialogue"] {
+  grid-column: 2;
+  align-self: start;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+}
+
+/* ── KR 포맷(flat 편집 DOM) 레이아웃 힌트 ──
+ * 저장 모델은 flat 유지, 편집기는 연속성 우선.
+ * 완전한 한 줄 묶음은 projection 레이어/PDF에서 처리하고,
+ * 편집 DOM에서는 lane 위치만 KR 기준으로 보여준다.
+ */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .scenario-editor-content > .character {
+  margin-left: 0 !important;
+  width: 100% !important;
+  padding-left: var(--sp-lane-character-start, 192px) !important;
+  padding-right: calc(100% - var(--sp-lane-character-start, 192px) - var(--sp-lane-character-width, 96px)) !important;
+  box-sizing: border-box;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .scenario-editor-content > .dialogue,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .scenario-editor-content > .parenthetical {
+  margin-left: 0 !important;
+  width: 100% !important;
+  padding-left: var(--sp-lane-speech-start, 288px) !important;
+  padding-right: calc(100% - var(--sp-lane-speech-start, 288px) - var(--sp-lane-speech-width, 410px)) !important;
+  box-sizing: border-box;
+}
+
+/* KR 편집 DOM에서 character + 첫 speech 노드는 같은 줄에 보여준다.
+ * 이 케이스는 lane padding 기반 block 배치 대신 explicit width/margin 배치를 사용한다.
+ */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .scenario-editor-content > .character:has(+ .dialogue),
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .scenario-editor-content > .character:has(+ .parenthetical) {
+  display: inline-block;
+  vertical-align: top;
+  width: var(--sp-lane-character-width, 96px) !important;
+  margin-left: var(--sp-lane-character-start, 192px) !important;
+  margin-right: var(--sp-lane-speech-gap, 0px) !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .scenario-editor-content > .character + .dialogue,
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .scenario-editor-content > .character + .parenthetical {
+  display: inline-block;
+  vertical-align: top;
+  width: var(--sp-lane-speech-width, 410px) !important;
+  margin-left: 0 !important;
+  margin-top: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box;
+}
+
+/* character + parenthetical + dialogue 케이스에서 뒤 dialogue는 같은 speech lane 안에서 이어지도록 */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .scenario-editor-content > .character + .parenthetical + .dialogue {
+  display: inline;
+  vertical-align: baseline;
+  width: auto !important;
+  margin-left: 0 !important;
+  margin-top: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box;
 }
 
 /* ── 전환 (Transition) ──
  * 좌 1.5" (144px), 우 1" (96px), 우측 정렬 */
 .scenario-editor .transition-block {
-  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
-  font-weight: 400;
-  font-size: 16px;
-  text-align: right;
-  text-transform: uppercase;
-  letter-spacing: 0;
-  line-height: 1;
-  margin-top: 1em;
-  margin-bottom: 0;
-  padding-left: 144px;
-  padding-right: 96px;
-  color: #000000;
+  font-family: var(--sp-transition-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
+  font-weight: var(--sp-transition-fw, 400);
+  font-size: var(--sp-transition-fs, var(--sp-base-fs, 16px));
+  text-align: var(--sp-transition-ta, right);
+  text-transform: var(--sp-transition-tt, uppercase);
+  letter-spacing: var(--sp-transition-ls, var(--sp-base-ls, 0px));
+  line-height: var(--sp-transition-lh, var(--sp-base-lh, 1));
+  margin-top: var(--sp-transition-mt, 1em);
+  margin-bottom: var(--sp-transition-mb, 0);
+  padding-left: var(--sp-transition-pl, 144px);
+  padding-right: var(--sp-transition-pr, 96px);
+  color: var(--sp-transition-color, var(--sp-base-color, #000000));
 }
 
 /* ==============================================
@@ -458,4 +798,28 @@ body {
   color: #adb5bd;
   pointer-events: none;
   height: 0;
+}
+
+/* Final override: KR speechFlow inline gap (dialogue/parenthetical adjacency) */
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .speech-flow__content
+  > :is([data-type="dialogue"], [data-type="parenthetical"])
+  + :is([data-type="dialogue"], [data-type="parenthetical"]) {
+  margin-left: var(--sp-speech-inline-gap, 0.5em) !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .speech-flow__content
+  > *:has(> :is([data-type="dialogue"], [data-type="parenthetical"]))
+  + *:has(> :is([data-type="dialogue"], [data-type="parenthetical"]))
+  > :is([data-type="dialogue"], [data-type="parenthetical"]) {
+  margin-left: var(--sp-speech-inline-gap, 0.5em) !important;
+}
+
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .speech-flow__content
+  > [data-type="dialogue"]
+  + [data-type="dialogue"],
+.scenario-editor[data-layout-mode="kr_dialogue_inline"] .speech-flow__content
+  > *:has(> [data-type="dialogue"])
+  + *:has(> [data-type="dialogue"])
+  > [data-type="dialogue"] {
+  margin-left: 0 !important;
 }
