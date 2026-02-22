@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fontsource-variable/noto-sans-kr": "^5.2.10",
+    "@fontsource/courier-prime": "^5.2.8",
+    "@fontsource/nanum-gothic-coding": "^5.2.8",
+    "@fontsource/noto-sans-kr": "^5.2.9",
     "@sparticuz/chromium": "^143.0.4",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",

@@ -5,7 +5,8 @@ import { serializeTiptapToHtml } from "@/lib/export/pdf/tiptapSerializer";
 import { buildPdfPrintCss } from "@/lib/export/pdf/printCss";
 import { renderPdfHtml } from "@/lib/export/pdf/renderHtml";
 import { renderPdfWithChromium } from "@/lib/export/pdf/chromium";
-import type { PdfExportRequest, PdfPageSettings, PdfExportErrorCode } from "@/lib/export/pdf/types";
+import { getPdfEmbeddedFontCss } from "@/lib/export/pdf/fonts";
+import type { PdfExportRequest, PdfPageSettings } from "@/lib/export/pdf/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,10 +14,6 @@ export const maxDuration = 30;
 
 function safeFilename(title: string) {
   return `${title.replace(/[^\p{L}\p{N}\-_ ]/gu, "").trim() || "document"}.pdf`;
-}
-
-function jsonError(status: number, code: PdfExportErrorCode, message: string) {
-  return NextResponse.json({ code, message }, { status });
 }
 
 function normalizeSnapshot(snapshot: unknown): JSONContent | null {
@@ -45,28 +42,42 @@ function normalizePageSettings(input: unknown): PdfPageSettings {
 }
 
 export async function POST(req: Request) {
+  const debugMode = new URL(req.url).searchParams.get("debug") === "1";
+  const debugId = crypto.randomUUID();
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return jsonError(401, "UNAUTHORIZED", "로그인이 필요합니다.");
+    return NextResponse.json(
+      { code: "UNAUTHORIZED", message: "로그인이 필요합니다.", debugId },
+      { status: 401 }
+    );
   }
 
   let body: PdfExportRequest;
   try {
     body = (await req.json()) as PdfExportRequest;
   } catch {
-    return jsonError(400, "INVALID_PAYLOAD", "요청 본문을 읽을 수 없습니다.");
+    return NextResponse.json(
+      { code: "INVALID_PAYLOAD", message: "요청 본문을 읽을 수 없습니다.", debugId },
+      { status: 400 }
+    );
   }
 
   if (!body?.projectId || !body?.documentId || !body?.documentType) {
-    return jsonError(400, "INVALID_PAYLOAD", "필수 필드가 누락되었습니다.");
+    return NextResponse.json(
+      { code: "INVALID_PAYLOAD", message: "필수 필드가 누락되었습니다.", debugId },
+      { status: 400 }
+    );
   }
 
   if (body.documentType !== "screenplay" && body.documentType !== "document") {
-    return jsonError(400, "INVALID_PAYLOAD", "지원하지 않는 문서 타입입니다.");
+    return NextResponse.json(
+      { code: "INVALID_PAYLOAD", message: "지원하지 않는 문서 타입입니다.", debugId },
+      { status: 400 }
+    );
   }
 
   const { data: ownedProject, error: projectError } = await supabase
@@ -78,7 +89,10 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (projectError || !ownedProject) {
-    return jsonError(404, "NOT_FOUND", "프로젝트를 찾을 수 없습니다.");
+    return NextResponse.json(
+      { code: "NOT_FOUND", message: "프로젝트를 찾을 수 없습니다.", debugId },
+      { status: 404 }
+    );
   }
 
   const { data: document, error: documentError } = await supabase
@@ -90,14 +104,18 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (documentError || !document) {
-    return jsonError(404, "NOT_FOUND", "문서를 찾을 수 없습니다.");
+    return NextResponse.json(
+      { code: "NOT_FOUND", message: "문서를 찾을 수 없습니다.", debugId },
+      { status: 404 }
+    );
   }
 
   const pageSettings = normalizePageSettings(body.pageSettings);
   const snapshot = normalizeSnapshot(body.contentSnapshot);
   const content = snapshot ?? (document.content as JSONContent);
   const html = serializeTiptapToHtml(body.documentType, content);
-  const cssText = buildPdfPrintCss(body.documentType, pageSettings);
+  const embeddedFontCss = await getPdfEmbeddedFontCss(body.documentType);
+  const cssText = buildPdfPrintCss(body.documentType, pageSettings, embeddedFontCss);
   const pageHtml = renderPdfHtml({
     title: document.title ?? "document",
     bodyClassName: body.documentType === "screenplay" ? "screenplay-root" : "document-root",
@@ -114,15 +132,26 @@ export async function POST(req: Request) {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
         "Cache-Control": "no-store",
+        "X-PDF-Debug-ID": debugId,
       },
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[/api/export/pdf] failed", {
+      debugId,
       errorMessage,
       documentId: body.documentId,
       projectId: body.projectId,
     });
-    return jsonError(500, "PDF_RENDER_FAILED", "PDF 생성 중 오류가 발생했습니다.");
+    const detail = debugMode ? errorMessage : undefined;
+    return NextResponse.json(
+      {
+        code: "PDF_RENDER_FAILED",
+        message: `PDF 생성 중 오류가 발생했습니다. (debugId: ${debugId})`,
+        debugId,
+        detail,
+      },
+      { status: 500 }
+    );
   }
 }
