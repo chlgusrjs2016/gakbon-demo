@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     "/api/export/pdf": [
       "./node_modules/@sparticuz/chromium/bin/**",
       "./node_modules/@sparticuz/chromium/build/**",
+      "./node_modules/@fontsource/courier-prime/**",
       "./node_modules/follow-redirects/**",
       "./node_modules/tar-fs/**",
     ],

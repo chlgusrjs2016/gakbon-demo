@@ -10,7 +10,7 @@ function pageSizeCss(pageSize: PdfPageSettings["pageSize"]) {
 
 const screenplayCss = `
 .screenplay-root {
-  font-family: "Courier Prime", "Nanum Gothic Coding", "Courier New", Courier, monospace;
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
   color: #000;
   font-size: 16px;
   line-height: 1;

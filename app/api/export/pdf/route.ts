@@ -12,8 +12,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-function safeFilename(title: string) {
-  return `${title.replace(/[^\p{L}\p{N}\-_ ]/gu, "").trim() || "document"}.pdf`;
+function safePart(title: string) {
+  return title.replace(/[^\p{L}\p{N}\-_ ]/gu, "").trim();
+}
+
+function safeFilename(projectTitle: string, documentTitle: string) {
+  const project = safePart(projectTitle) || "project";
+  const document = safePart(documentTitle) || "document";
+  return `${project}_${document}.pdf`;
 }
 
 function normalizeSnapshot(snapshot: unknown): JSONContent | null {
@@ -125,7 +131,10 @@ export async function POST(req: Request) {
 
   try {
     const pdfBuffer = await renderPdfWithChromium(pageHtml);
-    const filename = safeFilename(document.title ?? "document");
+    const filename = safeFilename(
+      ownedProject.title ?? "project",
+      document.title ?? "document"
+    );
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {

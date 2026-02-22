@@ -745,7 +745,13 @@ export default function EditorPage({
       }
 
       const blob = await response.blob();
-      const filename = `${(currentDocument.title || "document").trim() || "document"}.pdf`;
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const asciiMatch = disposition.match(/filename="([^"]+)"/i);
+      const filenameFromHeader = utf8Match?.[1]
+        ? decodeURIComponent(utf8Match[1])
+        : asciiMatch?.[1];
+      const filename = filenameFromHeader || `${(currentDocument.title || "document").trim() || "document"}.pdf`;
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;

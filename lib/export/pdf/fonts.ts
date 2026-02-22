@@ -32,16 +32,9 @@ async function inlineFontCssFromPackage(pkgName: string, cssFileName: string) {
 }
 
 async function buildEmbeddedScreenplayFontCss() {
-  // Courier Prime: 영문/숫자/기호
+  // Courier Prime only
   const courierCss = await inlineFontCssFromPackage("@fontsource/courier-prime", "400.css");
-
-  // Nanum Gothic Coding: 한글 포함 모노스페이스 fallback
-  const nanumCss = await inlineFontCssFromPackage(
-    "@fontsource/nanum-gothic-coding",
-    "400.css"
-  );
-
-  return `${courierCss}\n${nanumCss}`;
+  return courierCss;
 }
 
 export async function getPdfEmbeddedFontCss(
