@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vercel Frontend Builder"
+  short_description: "Generate production-ready React frontend blueprints"
+  default_prompt: "Use $vercel-frontend-builder to design and generate a full TypeScript + Tailwind frontend implementation for my app requirements."

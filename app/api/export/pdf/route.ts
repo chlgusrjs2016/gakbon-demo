@@ -5,6 +5,7 @@ import { serializeTiptapToHtml } from "@/lib/export/pdf/tiptapSerializer";
 import { buildPdfPrintCss } from "@/lib/export/pdf/printCss";
 import { renderPdfHtml } from "@/lib/export/pdf/renderHtml";
 import { renderPdfWithChromium } from "@/lib/export/pdf/chromium";
+import { getPdfEmbeddedFontCss } from "@/lib/export/pdf/fonts";
 import type { PdfExportRequest, PdfPageSettings } from "@/lib/export/pdf/types";
 
 export const runtime = "nodejs";
@@ -113,7 +114,8 @@ export async function POST(req: Request) {
   const snapshot = normalizeSnapshot(body.contentSnapshot);
   const content = snapshot ?? (document.content as JSONContent);
   const html = serializeTiptapToHtml(body.documentType, content);
-  const cssText = buildPdfPrintCss(body.documentType, pageSettings);
+  const embeddedFontCss = await getPdfEmbeddedFontCss(body.documentType);
+  const cssText = buildPdfPrintCss(body.documentType, pageSettings, embeddedFontCss);
   const pageHtml = renderPdfHtml({
     title: document.title ?? "document",
     bodyClassName: body.documentType === "screenplay" ? "screenplay-root" : "document-root",

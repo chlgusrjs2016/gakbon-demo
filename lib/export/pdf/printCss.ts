@@ -10,7 +10,7 @@ function pageSizeCss(pageSize: PdfPageSettings["pageSize"]) {
 
 const screenplayCss = `
 .screenplay-root {
-  font-family: var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace;
+  font-family: "Courier Prime", "Nanum Gothic Coding", "Courier New", Courier, monospace;
   color: #000;
   font-size: 16px;
   line-height: 1;
@@ -110,16 +110,20 @@ const documentCss = `
 
 export function buildPdfPrintCss(
   documentType: "screenplay" | "document",
-  pageSettings: PdfPageSettings
+  pageSettings: PdfPageSettings,
+  embeddedFontCss = ""
 ) {
   const { margins, pageSize } = pageSettings;
+  const pageMargins = documentType === "screenplay"
+    ? { top: margins.top, bottom: margins.bottom, left: 0, right: 0 }
+    : margins;
   const base = `
   @page {
     size: ${pageSizeCss(pageSize)};
-    margin-top: ${pxToIn(margins.top)};
-    margin-bottom: ${pxToIn(margins.bottom)};
-    margin-left: ${pxToIn(margins.left)};
-    margin-right: ${pxToIn(margins.right)};
+    margin-top: ${pxToIn(pageMargins.top)};
+    margin-bottom: ${pxToIn(pageMargins.bottom)};
+    margin-left: ${pxToIn(pageMargins.left)};
+    margin-right: ${pxToIn(pageMargins.right)};
   }
   html, body {
     margin: 0;
@@ -130,5 +134,7 @@ export function buildPdfPrintCss(
   .print-root { width: 100%; box-sizing: border-box; }
   `;
 
-  return `${base}\n${documentType === "screenplay" ? screenplayCss : documentCss}`;
+  return `${base}\n${embeddedFontCss}\n${
+    documentType === "screenplay" ? screenplayCss : documentCss
+  }`;
 }

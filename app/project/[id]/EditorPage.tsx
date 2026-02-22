@@ -708,7 +708,7 @@ export default function EditorPage({
         },
       };
 
-      const response = await fetch("/api/export/pdf", {
+      const response = await fetch("/api/export/pdf?debug=1", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

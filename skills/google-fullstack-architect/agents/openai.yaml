@@ -1,0 +1,4 @@
+interface:
+  display_name: "Google Fullstack Architect"
+  short_description: "Design complete production web app technical architecture"
+  default_prompt: "Use $google-fullstack-architect to produce a complete technical design doc before implementation for my web application."
