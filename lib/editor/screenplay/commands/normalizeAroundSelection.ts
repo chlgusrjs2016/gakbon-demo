@@ -22,8 +22,8 @@ export function normalizeDialogueBlocksAroundSelectionInTr(tr: any, schema: any)
     if (!top) return mergedAny;
 
     const currentTop = { node: top.node, pos: top.pos };
-    const prevTop = findPreviousTopLevelBlockByPos(workingState, top.pos);
-    const nextTop = findNextTopLevelBlockByPos(workingState, top.pos);
+    const prevTop: any = findPreviousTopLevelBlockByPos(workingState, top.pos);
+    const nextTop: any = findNextTopLevelBlockByPos(workingState, top.pos);
     const pairs: Array<{ left: { node: any; pos: number }; right: { node: any; pos: number } }> = [];
     if (prevTop) pairs.push({ left: { node: prevTop.node, pos: prevTop.pos }, right: currentTop });
     if (nextTop) pairs.push({ left: currentTop, right: { node: nextTop.node, pos: nextTop.pos } });
@@ -75,4 +75,3 @@ export function normalizeDialogueBlocksAroundSelectionCommand(
   dispatch?.(tr.scrollIntoView());
   return true;
 }
-

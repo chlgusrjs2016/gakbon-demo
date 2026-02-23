@@ -57,7 +57,7 @@ export function convertScreenplayNodeTypeCommand(params: {
     }
 
     if (targetType === "dialogue" || targetType === "parenthetical") {
-      const prevTop = findPreviousTopLevelBlockByPos(state, top.pos);
+      const prevTop: any = findPreviousTopLevelBlockByPos(state, top.pos);
       if (prevTop?.node?.type?.name === "character") {
         const prevCharacterText = prevTop.node.textContent ?? "";
         const merged = createDialogueBlockNode(state.schema, prevCharacterText, targetType, currentText);
@@ -70,8 +70,8 @@ export function convertScreenplayNodeTypeCommand(params: {
       }
 
       if (prevTop?.node?.type?.name === "dialogueBlock") {
-        const prevCharacter = getChildInfo(prevTop.node, prevTop.pos, "character");
-        const prevSpeechFlow = getChildInfo(prevTop.node, prevTop.pos, "speechFlow");
+        const prevCharacter: any = getChildInfo(prevTop.node, prevTop.pos, "character");
+        const prevSpeechFlow: any = getChildInfo(prevTop.node, prevTop.pos, "speechFlow");
         if (prevSpeechFlow) {
           const prevCharacterText = prevCharacter?.node?.textContent ?? "";
           const prevSegments = speechSegmentsFromNode(prevSpeechFlow.node);
@@ -211,4 +211,3 @@ export function convertScreenplayNodeTypeCommand(params: {
 
   return false;
 }
-
