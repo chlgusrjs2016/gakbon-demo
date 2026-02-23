@@ -12,6 +12,10 @@
 
 import { Extension, type Editor } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import {
+  scheduleScreenplayNodeConversion,
+  type ScreenplayConvertibleNodeType,
+} from "./screenplayConversionScheduler";
 
 const NODE_CYCLE = [
   "paragraph",
@@ -34,21 +38,12 @@ function cycleNode(editor: Editor, direction: 1 | -1): boolean {
 
   const nextIndex =
     (currentIndex + direction + NODE_CYCLE.length) % NODE_CYCLE.length;
-  const nextType = NODE_CYCLE[nextIndex];
+  const nextType = NODE_CYCLE[nextIndex] as ScreenplayConvertibleNodeType;
 
-  if (nextType === "character") {
-    editor.chain().focus().insertDialogueBlockFromCharacter().run();
-    return true;
-  }
-  if (nextType === "dialogue" || nextType === "parenthetical") {
-    editor.chain().focus().appendSpeechSegment(nextType).run();
-    return true;
-  }
-  if (nextType === "paragraph") {
-    editor.chain().focus().setParagraph().run();
-  } else {
-    editor.chain().focus().setNode(nextType).run();
-  }
+  // dialogueBlockEditing commands self-dispatch ProseMirror transactions.
+  // Running them directly inside handleKeyDown can race with key handling
+  // transactions and cause "Applying a mismatched transaction".
+  scheduleScreenplayNodeConversion(editor, nextType, "tab");
 
   return true;
 }

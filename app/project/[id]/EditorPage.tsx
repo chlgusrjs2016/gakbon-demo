@@ -84,6 +84,10 @@ import {
 } from "@/lib/fonts/compositeScreenplayFont";
 import { inflateDialogueBlocks } from "@/lib/editor/screenplayRuntime/inflateDialogueBlocks";
 import { flattenDialogueBlocks } from "@/lib/editor/screenplayRuntime/flattenDialogueBlocks";
+import {
+  scheduleScreenplayNodeConversion,
+  type ScreenplayConvertibleNodeType,
+} from "@/lib/editor/extensions/screenplayConversionScheduler";
 import { buildScreenplayTransitionContext } from "@/lib/editor/transitions/context";
 import { findMatchingTransitionRule } from "@/lib/editor/transitions/engine";
 import {
@@ -119,6 +123,11 @@ const MENU_ITEM_BASE_CLASS = [
   "flex w-full items-center gap-2.5 px-3 py-2 text-xs",
   "transition-all duration-100",
 ].join(" ");
+
+function normalizeScreenplayLineSpacingScale(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return 1;
+  return Math.floor(value * 100) / 100;
+}
 
 /* ── 포맷 선택 팝업 메뉴 ── */
 function FormatMenu({
@@ -436,15 +445,11 @@ export default function EditorPage({
   const handleNodeTypeChange = useCallback(
     (nodeType: string) => {
       if (!editorInstance) return;
-      if (nodeType === "paragraph") {
-        editorInstance.chain().focus().setParagraph().run();
-      } else if (nodeType === "character") {
-        editorInstance.chain().focus().insertDialogueBlockFromCharacter().run();
-      } else if (nodeType === "dialogue" || nodeType === "parenthetical") {
-        editorInstance.chain().focus().appendSpeechSegment(nodeType).run();
-      } else {
-        editorInstance.chain().focus().setNode(nodeType).run();
-      }
+      scheduleScreenplayNodeConversion(
+        editorInstance,
+        nodeType as ScreenplayConvertibleNodeType,
+        "dropdown"
+      );
     },
     [editorInstance]
   );
@@ -689,6 +694,44 @@ export default function EditorPage({
       setCustomFormats((refresh.data as UserScreenplayCustomFormatRow[]) ?? []);
     }
   }, [resolvedScreenplaySpec.customFormatId]);
+
+  const handleChangeScreenplayLineSpacingScale = useCallback(async (next: number) => {
+    if (!currentDocument || (currentDocument.document_type ?? "screenplay") !== "screenplay") return;
+    if (resolvedScreenplaySpec.source !== "custom") return;
+    const normalizedNext = normalizeScreenplayLineSpacingScale(next);
+
+    setScreenplayFormatSettings((prev) => ({
+      document_id: currentDocument.id,
+      format_key: prev?.format_key ?? "us",
+      custom_format_id: prev?.custom_format_id ?? null,
+      visual_overrides: {
+        ...(prev?.visual_overrides ?? {}),
+        base: {
+          ...(prev?.visual_overrides?.base ?? {}),
+          spacingScale: normalizedNext,
+        },
+      },
+      break_policy_overrides: prev?.break_policy_overrides ?? null,
+      updated_at: prev?.updated_at ?? new Date().toISOString(),
+    }));
+
+    const result = await upsertDocumentScreenplayRenderSettings(currentDocument.id, {
+      visualOverrides: {
+        base: {
+          spacingScale: normalizedNext,
+        },
+      },
+    });
+
+    if (result.success && result.data) {
+      setScreenplayFormatSettings(result.data);
+      return;
+    }
+
+    window.alert(result.error ?? "줄간격 설정 저장에 실패했습니다.");
+    const refresh = await getDocumentScreenplayRenderSettings(currentDocument.id);
+    setScreenplayFormatSettings(refresh.data ?? null);
+  }, [currentDocument, resolvedScreenplaySpec.source]);
 
   const handleChangeScreenplayNodeFontCoverageAtKey = useCallback(async (
     node: "sceneHeading" | "action" | "character" | "dialogue" | "parenthetical" | "transition" | "paragraph",
@@ -1271,6 +1314,7 @@ export default function EditorPage({
                 isScreenplay={!isDocumentMode}
                 fontCoverage={isDocumentMode ? null : resolvedScreenplaySpec.fontCoverage}
                 baseFontSize={isDocumentMode ? null : resolvedScreenplaySpec.baseFontSize}
+                lineSpacingScale={normalizeScreenplayLineSpacingScale(resolvedScreenplaySpec.visual.base.spacingScale)}
                 nodeFontCoverageOverrides={isDocumentMode ? null : resolvedScreenplaySpec.nodeFontCoverageOverrides}
                 builtinLocked={!isDocumentMode && resolvedScreenplaySpec.source === "builtin"}
                 activeFormatLabel={!isDocumentMode ? (activeCustomFormat?.name ?? resolvedScreenplaySpec.formatLabel) : undefined}
@@ -1282,6 +1326,9 @@ export default function EditorPage({
                 }}
                 onChangeFontCoverage={(next) => {
                   void handleChangeScreenplayFontCoverage(next);
+                }}
+                onChangeLineSpacingScale={(next) => {
+                  void handleChangeScreenplayLineSpacingScale(next);
                 }}
                 onChangeNodeFontCoverageAtKey={(node, group, fontKey) => {
                   void handleChangeScreenplayNodeFontCoverageAtKey(node, group, fontKey);
@@ -1571,6 +1618,7 @@ export default function EditorPage({
                     </p>
                   )}
                 </div>
+
               </div>
 
               {/* 용지 아래 여백 */}

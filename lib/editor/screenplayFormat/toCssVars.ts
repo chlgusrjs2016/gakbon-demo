@@ -6,6 +6,11 @@ function px(value: number) {
   return `${value}px`;
 }
 
+function normalizeSpacingScale(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return 1;
+  return Math.floor(value * 100) / 100;
+}
+
 function applyNodeVars(vars: Record<string, string>, prefix: string, spec: ScreenplayNodeVisualSpec) {
   vars[`--sp-${prefix}-mt`] = spec.marginTop;
   vars[`--sp-${prefix}-mb`] = spec.marginBottom;
@@ -23,12 +28,14 @@ function applyNodeVars(vars: Record<string, string>, prefix: string, spec: Scree
 }
 
 export function screenplaySpecToCssVars(spec: ResolvedScreenplaySpec): CSSProperties {
+  const spacingScale = normalizeSpacingScale(spec.visual.base.spacingScale);
   const vars: Record<string, string> = {
     "--sp-base-ff": spec.compositeFontFamily || spec.visual.base.fontFamily,
     "--sp-base-fs": px(spec.visual.base.fontSize),
     "--sp-base-lh": String(spec.visual.base.lineHeight),
     "--sp-base-ls": px(spec.visual.base.letterSpacing),
     "--sp-base-color": spec.visual.base.color,
+    "--sp-spacing-scale": String(spacingScale),
     "--sp-speech-inline-gap": spec.layoutMode === "kr_dialogue_inline" ? "0.5em" : "0em",
   };
 

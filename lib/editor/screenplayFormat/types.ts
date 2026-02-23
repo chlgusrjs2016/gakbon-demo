@@ -36,6 +36,7 @@ export type ScreenplayBaseVisualSpec = {
   lineHeight: number;
   letterSpacing: number;
   color: string;
+  spacingScale?: number;
 };
 
 export type ScreenplayVisualSpec = {

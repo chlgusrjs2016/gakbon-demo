@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 
 /* ── 타입 ── */
@@ -38,6 +39,10 @@ type GlassDropdownProps = {
   triggerMinWidth?: number;
   /** 트리거에 고정 라벨 표시 (지정 시 선택값 대신 이 텍스트 표시) */
   triggerLabel?: string;
+  /** 트리거 mouse down 시 기본 동작 방지 (focus 이동 방지용) */
+  preventDefaultOnTriggerMouseDown?: boolean;
+  /** 메뉴 아이템 mouse down 시 기본 동작 방지 (editor selection 보존용) */
+  preventDefaultOnItemMouseDown?: boolean;
 };
 
 /**
@@ -85,9 +90,18 @@ export default function GlassDropdown({
   align = "center",
   triggerMinWidth,
   triggerLabel,
+  preventDefaultOnTriggerMouseDown = false,
+  preventDefaultOnItemMouseDown = false,
 }: GlassDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    left: number;
+    minWidth: number;
+  } | null>(null);
 
   /* ── 가장 긴 라벨 기준 폭 계산 ── */
   const autoWidth = useMemo(
@@ -99,9 +113,11 @@ export default function GlassDropdown({
   /* ── 외부 클릭 시 닫기 ── */
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
       if (
         containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
+        !containerRef.current.contains(target) &&
+        (!menuRef.current || !menuRef.current.contains(target))
       ) {
         setIsOpen(false);
       }
@@ -111,6 +127,37 @@ export default function GlassDropdown({
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePosition = () => {
+      const triggerEl = triggerRef.current;
+      if (!triggerEl) return;
+      const rect = triggerEl.getBoundingClientRect();
+      const minWidth = Math.max(menuWidth, fixedWidth);
+      const marginTop = 6;
+      let left = rect.left;
+      if (align === "center") left = rect.left + rect.width / 2 - minWidth / 2;
+      if (align === "right") left = rect.right - minWidth;
+      const maxLeft = window.innerWidth - minWidth - 8;
+      left = Math.max(8, Math.min(left, maxLeft));
+
+      setMenuPosition({
+        top: rect.bottom + marginTop,
+        left,
+        minWidth,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen, align, menuWidth, fixedWidth]);
 
   /* ── ESC 키로 닫기 ── */
   useEffect(() => {
@@ -129,19 +176,74 @@ export default function GlassDropdown({
   const triggerPad = size === "sm" ? "px-2 py-1" : "px-3 py-1.5";
   const triggerText = size === "sm" ? "text-[11px]" : "text-xs";
 
-  /* ── 메뉴 정렬 ── */
-  const alignClass =
-    align === "left"
-      ? "left-0"
-      : align === "right"
-        ? "right-0"
-        : "left-1/2 -translate-x-1/2";
+  const menu = isOpen && menuPosition
+    ? createPortal(
+        <div
+          ref={menuRef}
+          className={[
+            "fixed z-[2000] rounded-xl py-1.5",
+            "bg-white/40 dark:bg-zinc-900/40",
+            "backdrop-blur-3xl saturate-150",
+            "border border-white/60 dark:border-white/[0.1]",
+            "shadow-[0_8px_40px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(255,255,255,0.4),inset_0_0.5px_0_rgba(255,255,255,0.5)]",
+            "dark:shadow-[0_8px_40px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.06),inset_0_0.5px_0_rgba(255,255,255,0.06)]",
+          ].join(" ")}
+          style={{
+            top: menuPosition.top,
+            left: menuPosition.left,
+            minWidth: menuPosition.minWidth,
+          }}
+        >
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onMouseDown={(e) => {
+                  if (preventDefaultOnItemMouseDown) e.preventDefault();
+                }}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={[
+                  "flex w-full items-center gap-2.5 px-3 py-2 text-xs",
+                  "transition-all duration-100",
+                  isSelected
+                    ? "bg-white/50 dark:bg-white/[0.1] font-semibold text-zinc-900 dark:text-white"
+                    : "text-zinc-600 dark:text-zinc-300 hover:bg-white/40 dark:hover:bg-white/[0.06]",
+                ].join(" ")}
+              >
+                {opt.icon && (
+                  <span
+                    className={
+                      isSelected
+                        ? "text-zinc-700 dark:text-zinc-200"
+                        : "text-zinc-400 dark:text-zinc-500"
+                    }
+                  >
+                    {opt.icon}
+                  </span>
+                )}
+                <span>{opt.label}</span>
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      )
+    : null;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className={isOpen ? "relative z-[150]" : "relative"}>
       {/* ── 트리거 버튼 ── */}
       <button
+        ref={triggerRef}
         type="button"
+        onMouseDown={(e) => {
+          if (preventDefaultOnTriggerMouseDown) e.preventDefault();
+        }}
         onClick={() => setIsOpen((prev) => !prev)}
         style={{ minWidth: fixedWidth }}
         className={[
@@ -171,56 +273,7 @@ export default function GlassDropdown({
           className={`ml-auto h-3 w-3 shrink-0 text-zinc-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
-
-      {/* ── 드롭다운 메뉴 (Liquid Glass 오버레이) ── */}
-      {isOpen && (
-        <div
-          className={[
-            `absolute ${alignClass} top-full z-[100] mt-1.5`,
-            "rounded-xl py-1.5",
-            "bg-white/40 dark:bg-zinc-900/40",
-            "backdrop-blur-3xl saturate-150",
-            "border border-white/60 dark:border-white/[0.1]",
-            "shadow-[0_8px_40px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(255,255,255,0.4),inset_0_0.5px_0_rgba(255,255,255,0.5)]",
-            "dark:shadow-[0_8px_40px_rgba(0,0,0,0.5),0_0_0_0.5px_rgba(255,255,255,0.06),inset_0_0.5px_0_rgba(255,255,255,0.06)]",
-          ].join(" ")}
-          style={{ minWidth: Math.max(menuWidth, fixedWidth) }}
-        >
-          {options.map((opt) => {
-            const isSelected = opt.value === value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                className={[
-                  "flex w-full items-center gap-2.5 px-3 py-2 text-xs",
-                  "transition-all duration-100",
-                  isSelected
-                    ? "bg-white/50 dark:bg-white/[0.1] font-semibold text-zinc-900 dark:text-white"
-                    : "text-zinc-600 dark:text-zinc-300 hover:bg-white/40 dark:hover:bg-white/[0.06]",
-                ].join(" ")}
-              >
-                {opt.icon && (
-                  <span
-                    className={
-                      isSelected
-                        ? "text-zinc-700 dark:text-zinc-200"
-                        : "text-zinc-400 dark:text-zinc-500"
-                    }
-                  >
-                    {opt.icon}
-                  </span>
-                )}
-                <span>{opt.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {menu}
     </div>
   );
 }

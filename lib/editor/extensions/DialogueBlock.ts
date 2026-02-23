@@ -4,7 +4,7 @@ export const DialogueBlock = Node.create({
   name: "dialogueBlock",
 
   group: "block",
-  content: "character speechFlow",
+  content: "character? speechFlow",
   defining: true,
   isolating: true,
 

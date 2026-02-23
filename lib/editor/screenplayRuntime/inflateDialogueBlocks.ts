@@ -13,8 +13,7 @@ function toSpeechSegments(children: JSONContent[] | undefined): JSONContent[] {
   const segments = (children ?? []).filter(
     (n) => n.type === "dialogue" || n.type === "parenthetical",
   );
-  if (segments.length > 0) return segments.map((n) => cloneNode(n));
-  return [{ type: "dialogue" }];
+  return segments.map((n) => cloneNode(n));
 }
 
 function buildDialogueBlock(characterNode: JSONContent, speechNodes?: JSONContent[]): JSONContent {
@@ -66,4 +65,3 @@ export function inflateDialogueBlocks(content: JSONContent | null | undefined): 
     content: out.length > 0 ? out : [{ type: "paragraph" }],
   };
 }
-

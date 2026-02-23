@@ -1,16 +1,29 @@
 import type { ResolvedScreenplaySpec, ScreenplayNodeVisualSpec } from "./types";
 
-function nodeCss(selector: string, spec: ScreenplayNodeVisualSpec) {
+function normalizeSpacingScale(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return 1;
+  return Math.floor(value * 100) / 100;
+}
+
+function scaledLength(value: string, scale: number) {
+  return scale === 1 ? value : `calc(${value} * ${scale})`;
+}
+
+function scaledLineHeight(value: number, scale: number) {
+  return scale === 1 ? String(value) : `calc(${value} * ${scale})`;
+}
+
+function nodeCss(selector: string, spec: ScreenplayNodeVisualSpec, spacingScale: number) {
   const lines = [
     `${selector} {`,
-    `  margin-top: ${spec.marginTop};`,
-    `  margin-bottom: ${spec.marginBottom};`,
+    `  margin-top: ${scaledLength(spec.marginTop, spacingScale)};`,
+    `  margin-bottom: ${scaledLength(spec.marginBottom, spacingScale)};`,
     `  padding-left: ${spec.paddingLeft}px;`,
     `  padding-right: ${spec.paddingRight}px;`,
   ];
   if (spec.fontFamily) lines.push(`  font-family: ${spec.fontFamily};`);
   if (typeof spec.fontSize === "number") lines.push(`  font-size: ${spec.fontSize}px;`);
-  if (typeof spec.lineHeight === "number") lines.push(`  line-height: ${spec.lineHeight};`);
+  if (typeof spec.lineHeight === "number") lines.push(`  line-height: ${scaledLineHeight(spec.lineHeight, spacingScale)};`);
   if (typeof spec.letterSpacing === "number") lines.push(`  letter-spacing: ${spec.letterSpacing}px;`);
   if (spec.color) lines.push(`  color: ${spec.color};`);
   if (spec.textTransform) lines.push(`  text-transform: ${spec.textTransform};`);
@@ -24,12 +37,13 @@ function nodeCss(selector: string, spec: ScreenplayNodeVisualSpec) {
 export function buildScreenplayPdfCssFromSpec(spec: ResolvedScreenplaySpec) {
   const base = spec.visual.base;
   const lane = spec.dialogueLane;
+  const spacingScale = normalizeSpacingScale(base.spacingScale);
   const runtimeDialogueBlockCss =
     lane
       ? spec.layoutMode === "kr_dialogue_inline"
         ? `
 .screenplay-root .dialogue-block {
-  margin-top: 1em;
+  margin-top: ${scaledLength("1em", spacingScale)};
   margin-bottom: 0;
 }
 .screenplay-root .dialogue-block > .dialogue-block__content {
@@ -84,8 +98,8 @@ export function buildScreenplayPdfCssFromSpec(spec: ResolvedScreenplaySpec) {
   display: block;
 }
 .screenplay-root .dialogue-block > .dialogue-block__content > .character {
-  margin-top: ${spec.visual.character.marginTop};
-  margin-bottom: ${spec.visual.character.marginBottom};
+  margin-top: ${scaledLength(spec.visual.character.marginTop, spacingScale)};
+  margin-bottom: ${scaledLength(spec.visual.character.marginBottom, spacingScale)};
   padding-left: ${spec.visual.character.paddingLeft}px;
   padding-right: ${spec.visual.character.paddingRight}px;
 }
@@ -100,26 +114,26 @@ export function buildScreenplayPdfCssFromSpec(spec: ResolvedScreenplaySpec) {
   font-family: ${base.fontFamily};
   color: ${base.color};
   font-size: ${base.fontSize}px;
-  line-height: ${base.lineHeight};
+  line-height: ${scaledLineHeight(base.lineHeight, spacingScale)};
   letter-spacing: ${base.letterSpacing}px;
   counter-reset: scene-counter;
 }
-${nodeCss(".screenplay-root p", spec.visual.paragraph)}
+${nodeCss(".screenplay-root p", spec.visual.paragraph, spacingScale)}
 .screenplay-root .scene-heading {
   position: relative;
   counter-increment: scene-counter;
 }
-${nodeCss(".screenplay-root .scene-heading", spec.visual.sceneHeading)}
+${nodeCss(".screenplay-root .scene-heading", spec.visual.sceneHeading, spacingScale)}
 .screenplay-root .scene-heading::before {
   content: ${spec.layoutMode === "kr_dialogue_inline" ? '"#" counter(scene-counter) "."' : 'counter(scene-counter) "."'};
   position: absolute;
   left: 96px;
 }
-${nodeCss(".screenplay-root .action", spec.visual.action)}
-${nodeCss(".screenplay-root .character", spec.visual.character)}
-${nodeCss(".screenplay-root .dialogue", spec.visual.dialogue)}
-${nodeCss(".screenplay-root .parenthetical", spec.visual.parenthetical)}
-${nodeCss(".screenplay-root .transition-block", spec.visual.transition)}
+${nodeCss(".screenplay-root .action", spec.visual.action, spacingScale)}
+${nodeCss(".screenplay-root .character", spec.visual.character, spacingScale)}
+${nodeCss(".screenplay-root .dialogue", spec.visual.dialogue, spacingScale)}
+${nodeCss(".screenplay-root .parenthetical", spec.visual.parenthetical, spacingScale)}
+${nodeCss(".screenplay-root .transition-block", spec.visual.transition, spacingScale)}
 .screenplay-root strong,
 .screenplay-root b { font-weight: 400 !important; }
 .screenplay-root em,

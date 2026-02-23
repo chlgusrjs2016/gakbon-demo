@@ -1,11 +1,8 @@
-/**
- * 노드타입 드롭다운
- *
- * Document 툴바의 폰트 선택과 동일한 느낌의 select UI를 사용합니다.
- */
 "use client";
 
-const NODE_TYPE_OPTIONS = [
+import GlassDropdown, { type GlassDropdownOption } from "@/components/ui/GlassDropdown";
+
+const NODE_TYPE_OPTIONS: GlassDropdownOption[] = [
   { value: "paragraph", label: "일반" },
   { value: "sceneHeading", label: "씬 헤딩" },
   { value: "action", label: "지문" },
@@ -22,17 +19,16 @@ type Props = {
 
 export default function NodeTypeDropdown({ value, onChange }: Props) {
   return (
-    <select
+    <GlassDropdown
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-8 rounded-md bg-transparent px-2 text-sm text-zinc-700 outline-none dark:text-zinc-200"
-      title="스타일(노드)"
-    >
-      {NODE_TYPE_OPTIONS.map((node) => (
-        <option key={node.value} value={node.value}>
-          {node.label}
-        </option>
-      ))}
-    </select>
+      options={NODE_TYPE_OPTIONS}
+      onChange={onChange}
+      size="md"
+      align="left"
+      menuWidth={160}
+      triggerMinWidth={112}
+      preventDefaultOnTriggerMouseDown
+      preventDefaultOnItemMouseDown
+    />
   );
 }

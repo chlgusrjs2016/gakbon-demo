@@ -12,6 +12,8 @@ import type {
 } from "@/lib/editor/screenplayFormat/types";
 
 const FONT_SIZE_OPTIONS = [14, 16, 18, 20] as const;
+const LINE_SPACING_SCALE_OPTIONS = [1.04, 1.2, 1.36, 1.52] as const;
+const LINE_SPACING_CUSTOM_VALUE = "__custom__";
 
 const FONT_GROUP_OPTIONS: Array<{ key: ScreenplayFontGroup; label: string }> = [
   { key: "latin", label: "영어(라틴)" },
@@ -48,33 +50,78 @@ function sampleTextForGroup(group: ScreenplayFontGroup) {
   }
 }
 
+function truncateToTwoDecimals(value: number) {
+  return Math.floor(value * 100) / 100;
+}
+
+function normalizeLineSpacingScale(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return 1;
+  return truncateToTwoDecimals(value);
+}
+
+function parseLineSpacingScale(value: string): number | null {
+  const parsed = Number(value.trim());
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return truncateToTwoDecimals(parsed);
+}
+
 export default function StyleSidebar({
   isScreenplay,
   fontCoverage,
   baseFontSize,
+  lineSpacingScale,
   nodeFontCoverageOverrides,
   builtinLocked,
   activeFormatLabel,
   onCloneToCustom,
   onChangeBaseFontSize,
   onChangeFontCoverage,
+  onChangeLineSpacingScale,
   onChangeNodeFontCoverageAtKey,
 }: {
   isScreenplay: boolean;
   fontCoverage: ScreenplayFontCoverageMap | null;
   baseFontSize: 14 | 16 | 18 | 20 | null;
+  lineSpacingScale: number;
   nodeFontCoverageOverrides: ScreenplayNodeFontCoverageOverrides | null;
   builtinLocked: boolean;
   activeFormatLabel?: string;
   onCloneToCustom: () => void;
   onChangeBaseFontSize: (next: 14 | 16 | 18 | 20) => void;
   onChangeFontCoverage: (next: ScreenplayFontCoverageMap) => void;
+  onChangeLineSpacingScale: (next: number) => void;
   onChangeNodeFontCoverageAtKey: (
     node: ScreenplayStyleNodeKey,
     group: ScreenplayFontGroup,
     fontKey: FontCatalogKey | null
   ) => void;
 }) {
+  const normalizedLineSpacingScale = normalizeLineSpacingScale(lineSpacingScale);
+  const presetLineSpacingValue = LINE_SPACING_SCALE_OPTIONS.find((v) => v === normalizedLineSpacingScale);
+  const [selectedGlobalGroup, setSelectedGlobalGroup] = useState<ScreenplayFontGroup>("hangul");
+  const [selectedNode, setSelectedNode] = useState<ScreenplayStyleNodeKey>("character");
+  const [selectedNodeGroup, setSelectedNodeGroup] = useState<ScreenplayFontGroup>("hangul");
+  const [lineSpacingDraft, setLineSpacingDraft] = useState(String(normalizedLineSpacingScale));
+  const [isCustomLineSpacingMode, setIsCustomLineSpacingMode] = useState<boolean>(
+    presetLineSpacingValue == null
+  );
+  const lineSpacingSelectValue =
+    isCustomLineSpacingMode || presetLineSpacingValue == null
+      ? LINE_SPACING_CUSTOM_VALUE
+      : String(presetLineSpacingValue);
+
+  const commitLineSpacingDraft = () => {
+    const parsed = parseLineSpacingScale(lineSpacingDraft);
+    if (parsed == null) {
+      setLineSpacingDraft(String(normalizedLineSpacingScale));
+      return;
+    }
+    setLineSpacingDraft(String(parsed));
+    if (parsed !== normalizedLineSpacingScale) {
+      onChangeLineSpacingScale(parsed);
+    }
+  };
+
   if (!isScreenplay) {
     return (
       <SidebarPanel side="left" title="스타일" icon={<Palette className="h-4 w-4" />} bodyClassName="p-4">
@@ -82,10 +129,6 @@ export default function StyleSidebar({
       </SidebarPanel>
     );
   }
-
-  const [selectedGlobalGroup, setSelectedGlobalGroup] = useState<ScreenplayFontGroup>("hangul");
-  const [selectedNode, setSelectedNode] = useState<ScreenplayStyleNodeKey>("character");
-  const [selectedNodeGroup, setSelectedNodeGroup] = useState<ScreenplayFontGroup>("hangul");
 
   const inheritedFontKey =
     (fontCoverage?.[selectedNodeGroup] ?? "pretendard") as FontCatalogKey;
@@ -129,6 +172,58 @@ export default function StyleSidebar({
             <option key={size} value={size}>{size}px</option>
           ))}
         </select>
+      </section>
+
+      <section className="mb-4 rounded-xl border border-zinc-200/70 bg-white/50 p-3 dark:border-white/[0.08] dark:bg-white/[0.02]">
+        <div className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-200">줄간격</div>
+        <select
+          className="w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-700 outline-none disabled:opacity-50 dark:border-white/[0.08] dark:bg-zinc-900 dark:text-zinc-200"
+          disabled={builtinLocked}
+          value={lineSpacingSelectValue}
+          onChange={(e) => {
+            if (builtinLocked) return;
+            const nextValue = e.target.value;
+            if (nextValue === LINE_SPACING_CUSTOM_VALUE) {
+              setIsCustomLineSpacingMode(true);
+              setLineSpacingDraft(String(normalizedLineSpacingScale));
+              return;
+            }
+            setIsCustomLineSpacingMode(false);
+            const parsed = Number(nextValue);
+            if (!Number.isFinite(parsed)) return;
+            setLineSpacingDraft(String(parsed));
+            onChangeLineSpacingScale(parsed);
+          }}
+        >
+          {LINE_SPACING_SCALE_OPTIONS.map((value) => (
+            <option key={value} value={String(value)}>
+              {String(value)}
+            </option>
+          ))}
+          <option value={LINE_SPACING_CUSTOM_VALUE}>직접 작성</option>
+        </select>
+        {lineSpacingSelectValue === LINE_SPACING_CUSTOM_VALUE && (
+          <input
+            type="text"
+            inputMode="decimal"
+            className="mt-2 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-700 outline-none dark:border-white/[0.08] dark:bg-zinc-900 dark:text-zinc-200"
+            disabled={builtinLocked}
+            value={lineSpacingDraft}
+            onChange={(e) => setLineSpacingDraft(e.target.value)}
+            onBlur={commitLineSpacingDraft}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              commitLineSpacingDraft();
+            }}
+            placeholder="예: 1.25"
+          />
+        )}
+        <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+          {builtinLocked
+            ? "내장 포맷은 줄간격이 고정됩니다. 커스텀 포맷에서만 변경할 수 있습니다."
+            : "직접 작성 값은 소수점 둘째자리까지 반영하며, 그 아래 자리는 절삭합니다."}
+        </p>
       </section>
 
       <section className="space-y-3">

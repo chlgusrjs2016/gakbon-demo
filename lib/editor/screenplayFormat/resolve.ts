@@ -36,6 +36,10 @@ function normalizeFormatKey(input: unknown): ScreenplayFormatKey {
   return input === "kr" ? "kr" : "us";
 }
 
+function builtinLockedSpacingScale(formatKey: ScreenplayFormatKey): number {
+  return formatKey === "kr" ? 1.52 : 1.04;
+}
+
 const SCREENPLAY_STYLE_NODE_KEYS: ScreenplayStyleNodeKey[] = [
   "sceneHeading",
   "action",
@@ -122,6 +126,13 @@ export function resolveScreenplaySpecFromSources(args: {
     parenthetical: { ...mergedVisual.parenthetical, fontFamily: nodeCompositeFontFamilies.parenthetical },
     transition: { ...mergedVisual.transition, fontFamily: nodeCompositeFontFamilies.transition },
   } as typeof profile.visual;
+
+  if (!custom) {
+    visual.base = {
+      ...visual.base,
+      spacingScale: builtinLockedSpacingScale(profile.key),
+    };
+  }
 
   return {
     formatKey: profile.key,

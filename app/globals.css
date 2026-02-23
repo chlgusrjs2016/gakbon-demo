@@ -77,7 +77,7 @@ body {
   overflow-anchor: none;
   font-family: var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace);
   font-size: var(--sp-base-fs, 16px);
-  line-height: var(--sp-base-lh, 1);
+  line-height: calc(var(--sp-base-lh, 1) * var(--sp-spacing-scale, 1));
   letter-spacing: var(--sp-base-ls, 0px);
   color: var(--sp-base-color, #000000);
   box-sizing: border-box;
@@ -174,12 +174,12 @@ body {
 /* ── 공통: 일반 (paragraph) ──
  * 좌 1.5" (144px), 우 1" (96px) */
 .scenario-editor p {
-  margin-top: var(--sp-p-mt, 0);
-  margin-bottom: var(--sp-p-mb, 0);
+  margin-top: calc(var(--sp-p-mt, 0) * var(--sp-spacing-scale, 1));
+  margin-bottom: calc(var(--sp-p-mb, 0) * var(--sp-spacing-scale, 1));
   padding-left: var(--sp-p-pl, 144px);
   padding-right: var(--sp-p-pr, 96px);
   font-size: var(--sp-p-fs, var(--sp-base-fs, 16px));
-  line-height: var(--sp-p-lh, var(--sp-base-lh, 1));
+  line-height: calc(var(--sp-p-lh, var(--sp-base-lh, 1)) * var(--sp-spacing-scale, 1));
   letter-spacing: var(--sp-p-ls, var(--sp-base-ls, 0px));
   color: var(--sp-p-color, var(--sp-base-color, #000000));
 }
@@ -194,9 +194,9 @@ body {
   font-size: var(--sp-scene-fs, var(--sp-base-fs, 16px));
   text-transform: var(--sp-scene-tt, uppercase);
   letter-spacing: var(--sp-scene-ls, var(--sp-base-ls, 0px));
-  line-height: var(--sp-scene-lh, var(--sp-base-lh, 1));
-  margin-top: var(--sp-scene-mt, 2em);
-  margin-bottom: var(--sp-scene-mb, 0);
+  line-height: calc(var(--sp-scene-lh, var(--sp-base-lh, 1)) * var(--sp-spacing-scale, 1));
+  margin-top: calc(var(--sp-scene-mt, 2em) * var(--sp-spacing-scale, 1));
+  margin-bottom: calc(var(--sp-scene-mb, 0) * var(--sp-spacing-scale, 1));
   padding-left: var(--sp-scene-pl, 144px);
   padding-right: var(--sp-scene-pr, 96px);
   counter-increment: scene-counter;
@@ -223,12 +223,12 @@ body {
  * 좌 1.5" (144px), 우 1" (96px) */
 .scenario-editor .action {
   font-family: var(--sp-action-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
-  margin-top: var(--sp-action-mt, 1em);
-  margin-bottom: var(--sp-action-mb, 0);
+  margin-top: calc(var(--sp-action-mt, 1em) * var(--sp-spacing-scale, 1));
+  margin-bottom: calc(var(--sp-action-mb, 0) * var(--sp-spacing-scale, 1));
   padding-left: var(--sp-action-pl, 144px);
   padding-right: var(--sp-action-pr, 96px);
   font-size: var(--sp-action-fs, var(--sp-base-fs, 16px));
-  line-height: var(--sp-action-lh, var(--sp-base-lh, 1));
+  line-height: calc(var(--sp-action-lh, var(--sp-base-lh, 1)) * var(--sp-spacing-scale, 1));
   letter-spacing: var(--sp-action-ls, var(--sp-base-ls, 0px));
   color: var(--sp-action-color, var(--sp-base-color, #000000));
 }
@@ -254,9 +254,9 @@ body {
   font-size: var(--sp-character-fs, var(--sp-base-fs, 16px));
   text-transform: var(--sp-character-tt, uppercase);
   letter-spacing: var(--sp-character-ls, var(--sp-base-ls, 0px));
-  line-height: var(--sp-character-lh, var(--sp-base-lh, 1));
-  margin-top: var(--sp-character-mt, 1em);
-  margin-bottom: var(--sp-character-mb, 0);
+  line-height: calc(var(--sp-character-lh, var(--sp-base-lh, 1)) * var(--sp-spacing-scale, 1));
+  margin-top: calc(var(--sp-character-mt, 1em) * var(--sp-spacing-scale, 1));
+  margin-bottom: calc(var(--sp-character-mb, 0) * var(--sp-spacing-scale, 1));
   padding-left: var(--sp-character-pl, 355px);
   padding-right: var(--sp-character-pr, 298px);
   color: var(--sp-character-color, var(--sp-base-color, #000000));
@@ -266,12 +266,12 @@ body {
  * 좌 2.5" (240px), 우 2" (192px) */
 .scenario-editor .dialogue {
   font-family: var(--sp-dialogue-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
-  margin-top: var(--sp-dialogue-mt, 0);
-  margin-bottom: var(--sp-dialogue-mb, 0);
+  margin-top: calc(var(--sp-dialogue-mt, 0) * var(--sp-spacing-scale, 1));
+  margin-bottom: calc(var(--sp-dialogue-mb, 0) * var(--sp-spacing-scale, 1));
   padding-left: var(--sp-dialogue-pl, 240px);
   padding-right: var(--sp-dialogue-pr, 192px);
   font-size: var(--sp-dialogue-fs, var(--sp-base-fs, 16px));
-  line-height: var(--sp-dialogue-lh, var(--sp-base-lh, 1));
+  line-height: calc(var(--sp-dialogue-lh, var(--sp-base-lh, 1)) * var(--sp-spacing-scale, 1));
   letter-spacing: var(--sp-dialogue-ls, var(--sp-base-ls, 0px));
   color: var(--sp-dialogue-color, var(--sp-base-color, #000000));
 }
@@ -282,10 +282,10 @@ body {
   font-family: var(--sp-parenthetical-ff, var(--sp-base-ff, var(--font-courier-prime), "Courier Prime", "Courier New", Courier, monospace));
   font-style: var(--sp-parenthetical-fst, normal);
   font-size: var(--sp-parenthetical-fs, var(--sp-base-fs, 16px));
-  line-height: var(--sp-parenthetical-lh, var(--sp-base-lh, 1));
+  line-height: calc(var(--sp-parenthetical-lh, var(--sp-base-lh, 1)) * var(--sp-spacing-scale, 1));
   letter-spacing: var(--sp-parenthetical-ls, var(--sp-base-ls, 0px));
-  margin-top: var(--sp-parenthetical-mt, 0);
-  margin-bottom: var(--sp-parenthetical-mb, 0);
+  margin-top: calc(var(--sp-parenthetical-mt, 0) * var(--sp-spacing-scale, 1));
+  margin-bottom: calc(var(--sp-parenthetical-mb, 0) * var(--sp-spacing-scale, 1));
   padding-left: var(--sp-parenthetical-pl, 298px);
   padding-right: var(--sp-parenthetical-pr, 250px);
   color: var(--sp-parenthetical-color, var(--sp-base-color, #000000));
@@ -294,7 +294,7 @@ body {
 /* ── dialogueBlock / speechFlow (런타임 그룹노드 + NodeView) ── */
 .scenario-editor .dialogue-block,
 .scenario-editor .react-renderer.node-dialogueBlock {
-  margin-top: var(--sp-character-mt, 1em);
+  margin-top: calc(var(--sp-character-mt, 1em) * var(--sp-spacing-scale, 1));
   margin-bottom: 0;
 }
 
@@ -309,7 +309,7 @@ body {
 
 .scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block,
 .scenario-editor[data-layout-mode="kr_dialogue_inline"] .react-renderer.node-dialogueBlock {
-  margin-top: 1em;
+  margin-top: calc(1em * var(--sp-spacing-scale, 1));
 }
 
 .scenario-editor[data-layout-mode="kr_dialogue_inline"] .dialogue-block > .dialogue-block__content > [data-type="character"] {
@@ -633,9 +633,9 @@ body {
   text-align: var(--sp-transition-ta, right);
   text-transform: var(--sp-transition-tt, uppercase);
   letter-spacing: var(--sp-transition-ls, var(--sp-base-ls, 0px));
-  line-height: var(--sp-transition-lh, var(--sp-base-lh, 1));
-  margin-top: var(--sp-transition-mt, 1em);
-  margin-bottom: var(--sp-transition-mb, 0);
+  line-height: calc(var(--sp-transition-lh, var(--sp-base-lh, 1)) * var(--sp-spacing-scale, 1));
+  margin-top: calc(var(--sp-transition-mt, 1em) * var(--sp-spacing-scale, 1));
+  margin-bottom: calc(var(--sp-transition-mb, 0) * var(--sp-spacing-scale, 1));
   padding-left: var(--sp-transition-pl, 144px);
   padding-right: var(--sp-transition-pr, 96px);
   color: var(--sp-transition-color, var(--sp-base-color, #000000));

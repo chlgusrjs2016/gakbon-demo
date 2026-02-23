@@ -1,119 +1,44 @@
 import { Extension, type Editor } from "@tiptap/core";
-import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import {
+  createDialogueBlockNode,
+  createTextNode,
+} from "../screenplay/model/builders";
+import {
+  findAncestor,
+  findTopLevelBlock,
+  firstSpeechSegmentPos,
+  getChildInfo,
+  getDialogueBlockContext,
+} from "../screenplay/model/selectors";
+import {
+  cursorPosInTextNode,
+  setCursor,
+} from "../screenplay/model/selection";
+import {
+  normalizeDialogueBlocksAroundSelectionCommand as normalizeAroundSelectionCommandImpl,
+} from "../screenplay/commands/normalizeAroundSelection";
+import {
+  convertScreenplayNodeTypeCommand as convertNodeTypeCommandImpl,
+} from "../screenplay/commands/convertNodeType";
+import type {
+  ScreenplayConvertibleNodeType,
+  SpeechKind,
+} from "../screenplay/types";
 import { buildScreenplayTransitionContext } from "../transitions/context";
 import { runTransitionForKey } from "../transitions/engine";
 import { screenplayTransitionRules } from "../transitions/screenplayPolicy";
 import type { TransitionActionRegistry, TransitionKey } from "../transitions/types";
-
-type SpeechKind = "dialogue" | "parenthetical";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     dialogueBlockEditing: {
       insertDialogueBlockFromCharacter: () => ReturnType;
       appendSpeechSegment: (kind: SpeechKind) => ReturnType;
+      convertScreenplayNodeType: (kind: ScreenplayConvertibleNodeType) => ReturnType;
       normalizeDialogueBlocksAroundSelection: () => ReturnType;
     };
   }
-}
-
-function setCursor(tr: any, pos: number) {
-  const p = Math.max(0, Math.min(pos, tr.doc.content.size));
-  tr.setSelection(TextSelection.create(tr.doc, p));
-  return tr;
-}
-
-function findAncestor($from: any, name: string) {
-  for (let depth = $from.depth; depth >= 0; depth -= 1) {
-    const node = $from.node(depth);
-    if (node?.type?.name === name) {
-      return {
-        depth,
-        node,
-        pos: depth > 0 ? $from.before(depth) : 0,
-      };
-    }
-  }
-  return null;
-}
-
-function findTopLevelBlock($from: any) {
-  for (let depth = $from.depth; depth > 0; depth -= 1) {
-    if ($from.node(depth - 1).type.name === "doc") {
-      return {
-        depth,
-        node: $from.node(depth),
-        pos: $from.before(depth),
-      };
-    }
-  }
-  return null;
-}
-
-function getChildInfo(parentNode: any, parentPos: number, typeName: string): any {
-  let found: { node: any; pos: number; index: number } | null = null;
-  parentNode.forEach((child: any, offset: number, index: number) => {
-    if (!found && child.type.name === typeName) {
-      found = { node: child, pos: parentPos + 1 + offset, index };
-    }
-  });
-  return found;
-}
-
-function getDialogueBlockContext(state: any): any {
-  const { $from } = state.selection;
-  const dialogueBlock = findAncestor($from, "dialogueBlock");
-  if (!dialogueBlock) return null;
-  const character = getChildInfo(dialogueBlock.node, dialogueBlock.pos, "character");
-  const speechFlow = getChildInfo(dialogueBlock.node, dialogueBlock.pos, "speechFlow");
-  const segment =
-    $from.parent.type.name === "dialogue" || $from.parent.type.name === "parenthetical"
-      ? {
-          type: $from.parent.type.name as SpeechKind,
-          node: $from.parent,
-          pos: $from.before($from.depth),
-          depth: $from.depth,
-        }
-      : null;
-  return {
-    dialogueBlock,
-    character,
-    speechFlow,
-    segment,
-    parentType: $from.parent.type.name,
-    parentOffset: $from.parentOffset,
-  };
-}
-
-function createTextNode(schema: any, typeName: string, text?: string) {
-  const type = schema.nodes[typeName];
-  if (!type) return null;
-  if (typeof text === "string") {
-    return type.create(null, text.length > 0 ? schema.text(text) : undefined);
-  }
-  return type.create();
-}
-
-function createDialogueBlockNode(schema: any, characterText = "", firstSpeechKind: SpeechKind = "dialogue", firstSpeechText = "") {
-  const dialogueBlockType = schema.nodes.dialogueBlock;
-  const speechFlowType = schema.nodes.speechFlow;
-  const characterType = schema.nodes.character;
-  const segType = schema.nodes[firstSpeechKind];
-  if (!dialogueBlockType || !speechFlowType || !characterType || !segType) return null;
-  const character = characterType.create(null, characterText ? schema.text(characterText) : undefined);
-  const seg = segType.create(null, firstSpeechText ? schema.text(firstSpeechText) : undefined);
-  const speechFlow = speechFlowType.create(null, [seg]);
-  return dialogueBlockType.create(null, [character, speechFlow]);
-}
-
-function firstSpeechSegmentPos(dialogueBlockNode: any, dialogueBlockPos: number) {
-  const speechFlow = getChildInfo(dialogueBlockNode, dialogueBlockPos, "speechFlow");
-  if (!speechFlow || speechFlow.node.childCount === 0) return null;
-  const first = speechFlow.node.child(0);
-  return {
-    pos: speechFlow.pos + 1,
-    node: first,
-  };
 }
 
 function ensureSpeechFlowHasSegment(state: any, view: any, ctx: any): boolean {
@@ -150,7 +75,7 @@ function appendSpeechSegmentCommand(editor: Editor, kind: SpeechKind): boolean {
   const state: any = editor.state;
   const ctx = getDialogueBlockContext(state);
   if (!ctx?.speechFlow) {
-    const node = createDialogueBlockNode(state.schema, "", kind, "");
+    const node = createDialogueBlockNode(state.schema, "", kind, "", { omitEmptyCharacter: true });
     if (!node) return false;
     const top = findTopLevelBlock(state.selection.$from);
     if (!top) return false;
@@ -199,7 +124,7 @@ function handleEnter(view: any): boolean {
     // Custom flow only applies when the cursor is at the end of the dialogue.
     if (!isAtEndOfParent) return false;
     const insertPos = ctx.dialogueBlock.pos + ctx.dialogueBlock.node.nodeSize;
-    const newBlock = createDialogueBlockNode(state.schema, "", "dialogue", "");
+    const newBlock = createDialogueBlockNode(state.schema, "", "dialogue", "", { omitEmptyCharacter: true });
     if (!newBlock) return false;
     const tr = state.tr.insert(insertPos, newBlock);
     setCursor(tr, insertPos + 2);
@@ -300,18 +225,17 @@ function deleteEmptyDialogueBlockSafelyFromCtx(view: any, ctx: any): boolean {
 function deleteEmptySegmentSafelyFromCtx(view: any, ctx: any): boolean {
   const { state } = view;
   if ((ctx.parentType === "dialogue" || ctx.parentType === "parenthetical") && ctx.segment && ctx.speechFlow) {
-    const onlyOne = ctx.speechFlow.node.childCount <= 1;
-    if (onlyOne) {
-      if (ctx.parentType === "dialogue") return false;
-      const dialogueNode = createTextNode(state.schema, "dialogue");
-      if (!dialogueNode) return false;
-      const tr = state.tr.replaceWith(ctx.segment.pos, ctx.segment.pos + ctx.segment.node.nodeSize, dialogueNode);
-      setCursor(tr, ctx.segment.pos + 1);
-      view.dispatch(tr.scrollIntoView());
-      return true;
-    }
     const tr = state.tr.delete(ctx.segment.pos, ctx.segment.pos + ctx.segment.node.nodeSize);
-    const targetPos = Math.max(ctx.speechFlow.pos + 1, Math.min(ctx.segment.pos - 1, tr.doc.content.size));
+    let targetPos = Math.max(ctx.speechFlow.pos + 1, Math.min(ctx.segment.pos - 1, tr.doc.content.size));
+    if (ctx.character) {
+      const nextCharacter = getChildInfo(tr.doc.nodeAt(ctx.dialogueBlock.pos), ctx.dialogueBlock.pos, "character");
+      if (nextCharacter) {
+        const characterText = nextCharacter.node?.textContent ?? "";
+        targetPos = cursorPosInTextNode(nextCharacter.pos, characterText, characterText.length);
+      } else {
+        targetPos = ctx.dialogueBlock.pos + 2;
+      }
+    }
     setCursor(tr, targetPos);
     view.dispatch(tr.scrollIntoView());
     return true;
@@ -444,6 +368,10 @@ export const DialogueBlockEditing = Extension.create({
 
   addCommands() {
     return {
+      // NOTE: `insertDialogueBlockFromCharacter` / `appendSpeechSegment` still dispatch internally
+      // via `editor.view.dispatch(...)` and are not chain-safe yet.
+      // `convertScreenplayNodeType` / `normalizeDialogueBlocksAroundSelection` below use command
+      // props (`state`, `dispatch`) and no longer self-dispatch.
       insertDialogueBlockFromCharacter:
         () =>
         ({ editor }) =>
@@ -452,10 +380,19 @@ export const DialogueBlockEditing = Extension.create({
         (kind) =>
         ({ editor }) =>
           appendSpeechSegmentCommand(editor, kind),
+      convertScreenplayNodeType:
+        (kind) =>
+        ({ editor, state, dispatch }) =>
+          convertNodeTypeCommandImpl({
+            editor,
+            state: state as any,
+            dispatch: dispatch as any,
+            targetType: kind,
+          }),
       normalizeDialogueBlocksAroundSelection:
         () =>
-        () =>
-          true,
+        ({ state, dispatch }) =>
+          normalizeAroundSelectionCommandImpl(state as any, dispatch as any),
     };
   },
 
