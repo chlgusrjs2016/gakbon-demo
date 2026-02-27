@@ -1,6 +1,7 @@
 import type { PdfPageSettings } from "./types";
 import type { ResolvedScreenplaySpec } from "@/lib/editor/screenplayFormat/types";
 import { buildScreenplayPdfCssFromSpec } from "@/lib/editor/screenplayFormat/toPdfCss";
+import { buildMarkdownPdfCss } from "./markdownSerializer";
 
 function pxToIn(px: number) {
   return `${(px / 96).toFixed(4)}in`;
@@ -40,7 +41,7 @@ const documentCss = `
 `;
 
 export function buildPdfPrintCss(
-  documentType: "screenplay" | "document",
+  documentType: "screenplay" | "document" | "md",
   pageSettings: PdfPageSettings,
   embeddedFontCss = "",
   screenplaySpec?: ResolvedScreenplaySpec | null
@@ -79,7 +80,8 @@ export function buildPdfPrintCss(
   `;
 
   const screenplayCss = screenplaySpec ? buildScreenplayPdfCssFromSpec(screenplaySpec) : "";
+  const markdownCss = buildMarkdownPdfCss();
   return `${base}\n${embeddedFontCss}\n${
-    documentType === "screenplay" ? screenplayCss : documentCss
+    documentType === "screenplay" ? screenplayCss : documentType === "md" ? markdownCss : documentCss
   }`;
 }

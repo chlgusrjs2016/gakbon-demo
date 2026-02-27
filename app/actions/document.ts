@@ -8,7 +8,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { JSONContent } from "@tiptap/react";
 
-export type DocumentType = "screenplay" | "document";
+export type DocumentType = "screenplay" | "document" | "md";
 export type DocumentFolder = {
   id: string;
   project_id: string;

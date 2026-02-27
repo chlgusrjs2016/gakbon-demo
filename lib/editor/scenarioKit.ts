@@ -14,6 +14,7 @@
  */
 
 import { SceneHeading } from "./extensions/SceneHeading";
+import { General } from "./extensions/General";
 import { Action } from "./extensions/Action";
 import { Character } from "./extensions/Character";
 import { Dialogue } from "./extensions/Dialogue";
@@ -27,6 +28,7 @@ import { DialogueBlockEditing } from "./extensions/DialogueBlockEditing";
 export const scenarioExtensions = [
   DialogueBlock,
   SpeechFlow,
+  General,
   SceneHeading,
   Action,
   Character,
@@ -40,6 +42,7 @@ export const scenarioExtensions = [
 export {
   DialogueBlock,
   SpeechFlow,
+  General,
   SceneHeading,
   Action,
   Character,

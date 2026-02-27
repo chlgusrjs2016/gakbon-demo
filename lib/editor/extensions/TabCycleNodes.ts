@@ -18,7 +18,7 @@ import {
 } from "./screenplayConversionScheduler";
 
 const NODE_CYCLE = [
-  "paragraph",
+  "general",
   "sceneHeading",
   "action",
   "character",

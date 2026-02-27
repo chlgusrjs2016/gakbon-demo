@@ -7,7 +7,7 @@ export type FlatScreenplayNodeType =
   | "dialogue"
   | "parenthetical"
   | "transition"
-  | "paragraph";
+  | "general";
 
 export type ProjectionNodeRef = {
   nodeIndex: number;

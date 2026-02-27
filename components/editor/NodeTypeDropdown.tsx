@@ -1,16 +1,15 @@
 "use client";
 
 import GlassDropdown, { type GlassDropdownOption } from "@/components/ui/GlassDropdown";
+import {
+  SCREENPLAY_NODE_TYPE_DROPDOWN_ORDER,
+  getScreenplayNodeLabelKo,
+} from "@/lib/editor/screenplayNodeLabels";
 
-const NODE_TYPE_OPTIONS: GlassDropdownOption[] = [
-  { value: "paragraph", label: "일반" },
-  { value: "sceneHeading", label: "씬 헤딩" },
-  { value: "action", label: "지문" },
-  { value: "character", label: "등장인물" },
-  { value: "dialogue", label: "대사" },
-  { value: "parenthetical", label: "괄호지시" },
-  { value: "transition", label: "전환" },
-];
+const NODE_TYPE_OPTIONS: GlassDropdownOption[] = SCREENPLAY_NODE_TYPE_DROPDOWN_ORDER.map((value) => ({
+  value,
+  label: getScreenplayNodeLabelKo(value, "dropdown"),
+}));
 
 type Props = {
   value: string;

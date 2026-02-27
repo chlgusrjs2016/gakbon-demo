@@ -9,6 +9,7 @@ import {
   FileText,
   Film,
   FolderPlus,
+  Hash,
   MoreHorizontal,
   PenLine,
   RefreshCw,
@@ -37,7 +38,7 @@ type DocumentItem = {
   id: string;
   title: string;
   folder_id?: string | null;
-  document_type?: "screenplay" | "document";
+  document_type?: "screenplay" | "document" | "md";
 };
 
 type FolderItem = DocumentFolder & {
@@ -115,6 +116,8 @@ function DocumentRow({
         <div className="flex items-center gap-1.5 pr-8">
           {doc.document_type === "document" ? (
             <FileText className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
+          ) : doc.document_type === "md" ? (
+            <Hash className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
           ) : (
             <Film className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
           )}
@@ -412,6 +415,17 @@ export default function DocumentsSidebar({
             >
               <FileText className="h-3.5 w-3.5" />
               <span>문서</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onCreateFile("md");
+                setShowCreateMenu(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-600 transition-all duration-100 hover:bg-white/40 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
+            >
+              <Hash className="h-3.5 w-3.5" />
+              <span>마크다운</span>
             </button>
           </div>
         )}

@@ -3,6 +3,7 @@ import { generateHTML } from "@tiptap/html";
 import StarterKit from "@tiptap/starter-kit";
 import { scenarioExtensions } from "@/lib/editor/scenarioKit";
 import { documentExtensions } from "@/lib/editor/documentKit";
+import { markdownExtensions } from "@/lib/editor/markdownKit";
 
 const screenplayExtensions = [
   StarterKit.configure({
@@ -17,7 +18,7 @@ const screenplayExtensions = [
 ];
 
 export function serializeTiptapToHtml(
-  documentType: "screenplay" | "document",
+  documentType: "screenplay" | "document" | "md",
   content: JSONContent
 ) {
   if (!content || content.type !== "doc") {
@@ -26,6 +27,9 @@ export function serializeTiptapToHtml(
 
   if (documentType === "screenplay") {
     return generateHTML(content, screenplayExtensions);
+  }
+  if (documentType === "md") {
+    return generateHTML(content, markdownExtensions);
   }
   return generateHTML(content, documentExtensions);
 }

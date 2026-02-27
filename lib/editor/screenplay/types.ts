@@ -1,7 +1,7 @@
 export type SpeechKind = "dialogue" | "parenthetical";
 
 export type ScreenplayConvertibleNodeType =
-  | "paragraph"
+  | "general"
   | "sceneHeading"
   | "action"
   | "character"
@@ -10,4 +10,3 @@ export type ScreenplayConvertibleNodeType =
   | "transition";
 
 export type SpeechSegment = { type: SpeechKind; text: string };
-

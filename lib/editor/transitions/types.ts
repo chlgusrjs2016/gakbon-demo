@@ -11,7 +11,7 @@ export type ScreenplayNodeKind =
   | "dialogue"
   | "parenthetical"
   | "transition"
-  | "paragraph"
+  | "general"
   | "dialogueBlock"
   | "speechFlow";
 

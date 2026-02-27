@@ -14,7 +14,7 @@ export type PdfPageSettings = {
 export type PdfExportRequest = {
   projectId: string;
   documentId: string;
-  documentType: "screenplay" | "document";
+  documentType: "screenplay" | "document" | "md";
   contentSnapshot: JSONContent;
   pageSettings: PdfPageSettings;
 };

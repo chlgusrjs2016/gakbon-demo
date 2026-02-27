@@ -42,7 +42,7 @@ export function convertScreenplayNodeTypeCommand(params: {
   const ctx = getDialogueBlockContext(state);
   const { text: currentText, offset: currentOffset } = getTextAndCursorOffset(state);
   const isRegularTarget =
-    targetType === "paragraph" ||
+    targetType === "general" ||
     targetType === "action" ||
     targetType === "sceneHeading" ||
     targetType === "transition";

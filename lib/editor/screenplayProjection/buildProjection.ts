@@ -9,25 +9,26 @@ import type {
 } from "./types";
 import { textFromJsonNode } from "./unwrapDialogueBlocks";
 
-const FLAT_TYPES: FlatScreenplayNodeType[] = [
+const FLAT_TYPES = [
   "sceneHeading",
   "action",
   "character",
   "dialogue",
   "parenthetical",
   "transition",
+  "general",
   "paragraph",
-];
+] as const;
 
-function isFlatType(type: string): type is FlatScreenplayNodeType {
-  return (FLAT_TYPES as string[]).includes(type);
+function isFlatType(type: string): type is (typeof FLAT_TYPES)[number] {
+  return (FLAT_TYPES as readonly string[]).includes(type);
 }
 
 function makeRef(node: JSONContent, nodeIndex: number): ProjectionNodeRef | null {
   if (!node.type || !isFlatType(node.type)) return null;
   return {
     nodeIndex,
-    nodeType: node.type,
+    nodeType: node.type === "paragraph" ? "general" : node.type,
     textContent: textFromJsonNode(node),
     node,
   };

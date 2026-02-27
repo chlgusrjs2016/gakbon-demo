@@ -4,6 +4,10 @@ import { useState } from "react";
 import { CopyPlus, Palette } from "lucide-react";
 import { FONT_CATALOG, FONT_CATALOG_OPTIONS, type FontCatalogKey } from "@/lib/fonts/fontCatalog";
 import SidebarPanel from "@/components/editor/SidebarPanel";
+import {
+  SCREENPLAY_STYLE_NODE_ORDER,
+  getScreenplayNodeLabelKo,
+} from "@/lib/editor/screenplayNodeLabels";
 import type {
   ScreenplayFontCoverageMap,
   ScreenplayFontGroup,
@@ -23,15 +27,12 @@ const FONT_GROUP_OPTIONS: Array<{ key: ScreenplayFontGroup; label: string }> = [
   { key: "other", label: "그외 문자" },
 ];
 
-const NODE_OPTIONS: Array<{ key: ScreenplayStyleNodeKey; label: string }> = [
-  { key: "sceneHeading", label: "씬 헤딩" },
-  { key: "action", label: "액션" },
-  { key: "character", label: "등장인물" },
-  { key: "dialogue", label: "대사" },
-  { key: "parenthetical", label: "괄호지시" },
-  { key: "transition", label: "트랜지션" },
-  { key: "paragraph", label: "문단" },
-];
+const NODE_OPTIONS: Array<{ key: ScreenplayStyleNodeKey; label: string }> = SCREENPLAY_STYLE_NODE_ORDER.map(
+  (key) => ({
+    key,
+    label: getScreenplayNodeLabelKo(key, "style"),
+  }),
+);
 
 function sampleTextForGroup(group: ScreenplayFontGroup) {
   switch (group) {

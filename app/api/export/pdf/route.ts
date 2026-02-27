@@ -10,6 +10,7 @@ import type { PdfExportRequest, PdfPageSettings } from "@/lib/export/pdf/types";
 import { resolveScreenplaySpecFromSources } from "@/lib/editor/screenplayFormat/resolve";
 import { unwrapDialogueBlocks } from "@/lib/editor/screenplayProjection/unwrapDialogueBlocks";
 import { inflateDialogueBlocks } from "@/lib/editor/screenplayRuntime/inflateDialogueBlocks";
+import { toErrorResponse } from "@/lib/error/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,7 +83,11 @@ export async function POST(req: Request) {
     );
   }
 
-  if (body.documentType !== "screenplay" && body.documentType !== "document") {
+  if (
+    body.documentType !== "screenplay" &&
+    body.documentType !== "document" &&
+    body.documentType !== "md"
+  ) {
     return NextResponse.json(
       { code: "INVALID_PAYLOAD", message: "지원하지 않는 문서 타입입니다.", debugId },
       { status: 400 }
@@ -175,7 +180,12 @@ export async function POST(req: Request) {
   const cssText = buildPdfPrintCss(body.documentType, pageSettings, embeddedFontCss, screenplaySpec);
   const pageHtml = renderPdfHtml({
     title: document.title ?? "document",
-    bodyClassName: body.documentType === "screenplay" ? "screenplay-root" : "document-root",
+    bodyClassName:
+      body.documentType === "screenplay"
+        ? "screenplay-root"
+        : body.documentType === "md"
+          ? "markdown-root"
+          : "document-root",
     cssText,
     contentHtml: html,
   });
@@ -196,7 +206,12 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const normalizedError = toErrorResponse(
+      error,
+      "PDF_RENDER_FAILED",
+      `PDF 생성 중 오류가 발생했습니다. (debugId: ${debugId})`
+    );
+    const errorMessage = normalizedError.detail ?? normalizedError.message;
     console.error("[/api/export/pdf] failed", {
       debugId,
       errorMessage,
@@ -206,8 +221,8 @@ export async function POST(req: Request) {
     const detail = debugMode ? errorMessage : undefined;
     return NextResponse.json(
       {
-        code: "PDF_RENDER_FAILED",
-        message: `PDF 생성 중 오류가 발생했습니다. (debugId: ${debugId})`,
+        code: normalizedError.code,
+        message: normalizedError.message,
         debugId,
         detail,
       },

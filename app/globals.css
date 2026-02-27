@@ -824,3 +824,326 @@ body {
   > [data-type="dialogue"] {
   margin-left: 0 !important;
 }
+
+/* ==============================================
+ * Markdown 에디터 스타일
+ * ============================================== */
+.markdown-editor-content {
+  outline: none;
+  min-height: 500px;
+  color: var(--foreground);
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  word-break: keep-all;
+  padding: 2rem;
+}
+
+.markdown-editor-content:focus,
+.markdown-editor-content:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.markdown-editor .ProseMirror:focus {
+  outline: none;
+}
+
+.markdown-editor .ProseMirror-selectednode {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Markdown 블록 스타일 */
+.markdown-editor-content p {
+  margin-bottom: 1rem;
+}
+
+.markdown-editor-content h1 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-editor-content h2 {
+  font-size: 1.875rem;
+  line-height: 1.3;
+  font-weight: 700;
+  margin-top: 1.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.markdown-editor-content h3 {
+  font-size: 1.5rem;
+  line-height: 1.4;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-editor-content ul,
+.markdown-editor-content ol {
+  margin-bottom: 1rem;
+  padding-left: 1.75rem;
+}
+
+.markdown-editor-content ul {
+  list-style: disc;
+}
+
+.markdown-editor-content ol {
+  list-style: decimal;
+}
+
+.markdown-editor-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.markdown-editor-content li[data-type="taskItem"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-editor-content li[data-type="taskItem"] > label {
+  margin-top: 0.35rem;
+  display: inline-flex;
+}
+
+.markdown-editor-content li[data-type="taskItem"] > div {
+  flex: 1;
+}
+
+.markdown-editor-content li[data-type="taskItem"] > label input[type="checkbox"] {
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.markdown-editor-content blockquote {
+  border-left: 4px solid #d1d5db;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.markdown-editor-content code {
+  background-color: #f3f4f6;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.875em;
+}
+
+.markdown-editor-content pre {
+  background-color: #1f2937;
+  color: #f9fafb;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.markdown-editor-content pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 0.875rem;
+}
+
+.markdown-editor-content hr {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+.markdown-editor-content a {
+  color: #3b82f6;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.markdown-editor-content a:hover {
+  color: #2563eb;
+}
+
+.markdown-editor-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5rem auto;
+  border-radius: 0.5rem;
+}
+
+.markdown-editor-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+}
+
+.markdown-editor-content table td,
+.markdown-editor-content table th {
+  border: 1px solid #d1d5db;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.markdown-editor-content table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+
+.markdown-editor-content table td p,
+.markdown-editor-content table th p {
+  margin-bottom: 0;
+}
+
+/* Active cell highlighting */
+.markdown-editor-content table td.selectedCell,
+.markdown-editor-content table th.selectedCell {
+  background-color: #dbeafe;
+  outline: 2px solid #3b82f6;
+  outline-offset: -1px;
+}
+
+/* Column resize handle */
+.markdown-editor-content .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #3b82f6;
+  cursor: col-resize;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.markdown-editor-content table:hover .column-resize-handle {
+  opacity: 0.3;
+}
+
+.markdown-editor-content .column-resize-handle:hover {
+  opacity: 1 !important;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .markdown-editor-content blockquote {
+    border-left-color: #4b5563;
+    color: #9ca3af;
+  }
+
+  .markdown-editor-content code {
+    background-color: #374151;
+    color: #f9fafb;
+  }
+
+  .markdown-editor-content pre {
+    background-color: #111827;
+  }
+
+  .markdown-editor-content hr {
+    border-top-color: #374151;
+  }
+
+  .markdown-editor-content a {
+    color: #60a5fa;
+  }
+
+  .markdown-editor-content a:hover {
+    color: #93c5fd;
+  }
+
+  .markdown-editor-content table td,
+  .markdown-editor-content table th {
+    border-color: #4b5563;
+  }
+
+  .markdown-editor-content table th {
+    background-color: #374151;
+  }
+
+  /* Active cell highlighting - dark mode */
+  .markdown-editor-content table td.selectedCell,
+  .markdown-editor-content table th.selectedCell {
+    background-color: #1e3a8a;
+    outline: 2px solid #60a5fa;
+    outline-offset: -1px;
+  }
+}
+
+/* Drag handle 스타일 */
+.drag-handle {
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.markdown-editor-content:hover .drag-handle {
+  opacity: 1;
+}
+
+/* 블록 선택 상태 */
+.markdown-editor-content .ProseMirror-selectednode {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .markdown-editor-content .ProseMirror-selectednode {
+    background-color: rgba(96, 165, 250, 0.15);
+  }
+}
+
+/* Placeholder */
+.markdown-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .markdown-editor p.is-editor-empty:first-child::before {
+    color: #6b7280;
+  }
+}
+
+/* ==============================================
+ * Markdown editor
+ * ============================================== */
+.markdown-editor-content {
+  outline: none;
+  color: #111827;
+  line-height: 1.75;
+}
+
+.markdown-editor-content > * {
+  content-visibility: auto;
+  contain-intrinsic-size: 32px;
+}
+
+.markdown-editor-content :focus-visible {
+  outline: 2px solid rgba(16, 185, 129, 0.8);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.markdown-editor-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-editor-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}

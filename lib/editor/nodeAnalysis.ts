@@ -5,4 +5,4 @@ export type ScenarioNodeType =
   | "dialogue"
   | "parenthetical"
   | "transition"
-  | "paragraph";
+  | "general";

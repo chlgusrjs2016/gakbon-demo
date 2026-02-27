@@ -30,6 +30,8 @@ import {
 import ScenarioEditor from "@/components/editor/ScenarioEditor";
 import DocumentEditor from "@/components/editor/DocumentEditor";
 import DocumentToolbar from "@/components/editor/DocumentToolbar";
+import MarkdownEditor from "@/components/editor/MarkdownEditor";
+import MarkdownToolbar from "@/components/editor/MarkdownToolbar";
 import NavigatorSidebar from "@/components/editor/NavigatorSidebar";
 import DocumentsSidebar from "@/components/editor/DocumentsSidebar";
 import StyleSidebar from "@/components/editor/StyleSidebar";
@@ -84,6 +86,11 @@ import {
 } from "@/lib/fonts/compositeScreenplayFont";
 import { inflateDialogueBlocks } from "@/lib/editor/screenplayRuntime/inflateDialogueBlocks";
 import { flattenDialogueBlocks } from "@/lib/editor/screenplayRuntime/flattenDialogueBlocks";
+import {
+  convertScreenplayGeneralToParagraph,
+  convertScreenplayParagraphToGeneral,
+} from "@/lib/editor/screenplayRuntime/generalCompat";
+import { getScreenplayNodePublicKey } from "@/lib/editor/screenplayNodeLabels";
 import {
   scheduleScreenplayNodeConversion,
   type ScreenplayConvertibleNodeType,
@@ -334,7 +341,7 @@ export default function EditorPage({
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
 
   /* ── 현재 노드타입 ── */
-  const [currentNodeType, setCurrentNodeType] = useState("paragraph");
+  const [currentNodeType, setCurrentNodeType] = useState("general");
   const [transitionHintVersion, setTransitionHintVersion] = useState(0);
 
   /* ── 현재 포맷 ── */
@@ -461,7 +468,10 @@ export default function EditorPage({
       if (!currentDocument) return;
       const normalizedContent =
         (currentDocument.document_type ?? "screenplay") === "screenplay"
-          ? (flattenDialogueBlocks(content) ?? content)
+          ? (() => {
+              const canonical = convertScreenplayGeneralToParagraph(content) ?? content;
+              return flattenDialogueBlocks(canonical) ?? canonical;
+            })()
           : content;
       setDocumentList((prev) =>
         prev.map((doc) =>
@@ -491,13 +501,17 @@ export default function EditorPage({
   const normalizedScreenplayContent = useMemo(() => {
     if (!currentDocument) return null;
     if ((currentDocument.document_type ?? "screenplay") !== "screenplay") return currentDocument.content;
-    return inflateDialogueBlocks(currentDocument.content) ?? currentDocument.content;
+    const inflated = inflateDialogueBlocks(currentDocument.content) ?? currentDocument.content;
+    return convertScreenplayParagraphToGeneral(inflated) ?? inflated;
   }, [currentDocument]);
   const currentType = currentDocument?.document_type ?? "screenplay";
-  const isDocumentMode = currentType !== "screenplay";
+  const isScreenplayMode = currentType === "screenplay";
+  const isDocumentMode = currentType === "document";
+  const isMarkdownMode = currentType === "md";
+  const isPageMode = isDocumentMode || isMarkdownMode;
   const isScreenplayFormatReady =
     !!currentDocument &&
-    !isDocumentMode &&
+    isScreenplayMode &&
     !screenplayFormatSettingsLoading &&
     screenplayFormatSettingsDocId === currentDocument.id;
   const activeCustomFormat = useMemo(
@@ -555,13 +569,13 @@ export default function EditorPage({
 
   const render = usePageRender({
     editor: editorInstance,
-    documentType: isDocumentMode ? "document" : "screenplay",
+    documentType: isScreenplayMode ? "screenplay" : "document",
     pageSizeKey: "a4",
-    configOverride: isDocumentMode ? null : screenplayRenderConfig,
+    configOverride: isScreenplayMode ? screenplayRenderConfig : null,
   });
   const screenplayPage = render.pageSize;
   const documentPage = PAGE_SIZE_PRESETS.a4;
-  const activePage = isDocumentMode ? documentPage : render.pageSize;
+  const activePage = isPageMode ? documentPage : render.pageSize;
   const activeRulerInches = activePage.width / PX_PER_INCH;
   const { pageCount, canvasHeight, pageGap, margins, lineNumberTopPadding } = render;
   const screenplayStyleVars = screenplaySpecToCssVars(resolvedScreenplaySpec);
@@ -588,7 +602,7 @@ export default function EditorPage({
   ]);
 
   const screenplayKeyTransitionHints = useMemo(() => {
-    if (!editorInstance || isDocumentMode) return null;
+    if (!editorInstance || !isScreenplayMode) return null;
     try {
       const context = buildScreenplayTransitionContext(editorInstance);
       const enterRule = findMatchingTransitionRule({
@@ -616,7 +630,7 @@ export default function EditorPage({
     } catch {
       return null;
     }
-  }, [editorInstance, isDocumentMode, transitionHintVersion]);
+  }, [editorInstance, isScreenplayMode, transitionHintVersion]);
 
   const handleFormatChange = useCallback(async (nextFormat: string) => {
     setCurrentFormat(nextFormat);
@@ -1005,13 +1019,13 @@ export default function EditorPage({
       const payload: PdfExportRequest = {
         projectId: project.id,
         documentId: currentDocument.id,
-        documentType: (currentDocument.document_type ?? "screenplay") as "screenplay" | "document",
+        documentType: (currentDocument.document_type ?? "screenplay") as "screenplay" | "document" | "md",
         contentSnapshot:
           currentDocument.content && currentDocument.content.type === "doc"
             ? currentDocument.content
             : { type: "doc", content: [{ type: "paragraph" }] },
         pageSettings: {
-          pageSize: isDocumentMode ? "a4" : (resolvedScreenplaySpec.paper.key as PageSizeKey),
+          pageSize: isScreenplayMode ? (resolvedScreenplaySpec.paper.key as PageSizeKey) : "a4",
           margins: {
             top: margins.top,
             bottom: margins.bottom,
@@ -1079,7 +1093,7 @@ export default function EditorPage({
     } finally {
       setIsExportingPdf(false);
     }
-  }, [currentDocument, isDocumentMode, isExportingPdf, margins.bottom, margins.left, margins.right, margins.top, project.id, resolvedScreenplaySpec.paper.key]);
+  }, [currentDocument, isScreenplayMode, isExportingPdf, margins.bottom, margins.left, margins.right, margins.top, project.id, resolvedScreenplaySpec.paper.key]);
 
   /* ── 헤더 버튼: 세로 아이콘+라벨 스타일 ── */
   const headerBtnClass = [
@@ -1154,7 +1168,7 @@ export default function EditorPage({
             {showFormatMenu && (
               <FormatMenu
                 currentFormat={currentFormat}
-                isScreenplay={!isDocumentMode}
+                isScreenplay={isScreenplayMode}
                 customFormats={customFormats.map((f) => ({ id: f.id, name: f.name }))}
                 onCloneToCustom={() => {
                   void handleCloneCurrentToCustomFormat();
@@ -1311,13 +1325,13 @@ export default function EditorPage({
 
             return (
               <StyleSidebar
-                isScreenplay={!isDocumentMode}
-                fontCoverage={isDocumentMode ? null : resolvedScreenplaySpec.fontCoverage}
-                baseFontSize={isDocumentMode ? null : resolvedScreenplaySpec.baseFontSize}
+                isScreenplay={isScreenplayMode}
+                fontCoverage={isScreenplayMode ? resolvedScreenplaySpec.fontCoverage : null}
+                baseFontSize={isScreenplayMode ? resolvedScreenplaySpec.baseFontSize : null}
                 lineSpacingScale={normalizeScreenplayLineSpacingScale(resolvedScreenplaySpec.visual.base.spacingScale)}
-                nodeFontCoverageOverrides={isDocumentMode ? null : resolvedScreenplaySpec.nodeFontCoverageOverrides}
-                builtinLocked={!isDocumentMode && resolvedScreenplaySpec.source === "builtin"}
-                activeFormatLabel={!isDocumentMode ? (activeCustomFormat?.name ?? resolvedScreenplaySpec.formatLabel) : undefined}
+                nodeFontCoverageOverrides={isScreenplayMode ? resolvedScreenplaySpec.nodeFontCoverageOverrides : null}
+                builtinLocked={isScreenplayMode && resolvedScreenplaySpec.source === "builtin"}
+                activeFormatLabel={isScreenplayMode ? (activeCustomFormat?.name ?? resolvedScreenplaySpec.formatLabel) : undefined}
                 onCloneToCustom={() => {
                   void handleCloneCurrentToCustomFormat();
                 }}
@@ -1340,96 +1354,7 @@ export default function EditorPage({
 
         {/* 에디터 (전체 폭) */}
         <main className="flex h-full flex-col overflow-hidden bg-gradient-to-b from-gray-100/50 to-gray-50/50 dark:from-zinc-900/50 dark:to-zinc-950/50">
-          {isDocumentMode ? (
-            <div className="flex h-full flex-col">
-              <DocumentToolbar
-                editor={editorInstance}
-                documentId={currentDocument?.id}
-                onImageUploadReady={(fn) => {
-                  documentImageUploadTriggerRef.current = fn;
-                }}
-              />
-
-              <div
-                className="flex flex-1 flex-col items-center overflow-y-auto px-8"
-                style={{ overflowAnchor: "none" }}
-              >
-                {/* Ruler — A4 폭, 툴바 아래 */}
-                <div className="sticky top-0 z-20 shrink-0 pt-4 pb-0 bg-gradient-to-b from-gray-100/80 via-gray-100/60 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/60 dark:to-transparent" style={{ width: documentPage.width }}>
-                  <Ruler
-                    widthPx={documentPage.width}
-                    totalInches={documentPage.width / PX_PER_INCH}
-                    leftMarginPx={margins.left}
-                    rightMarginPx={margins.right}
-                  />
-                </div>
-
-                {/* 단일 페이지 캔버스 + 자연 스크롤 */}
-                <div
-                  className="relative shrink-0"
-                  style={{
-                    width: documentPage.width,
-                    minHeight: canvasHeight,
-                  }}
-                >
-                  {Array.from({ length: pageCount }, (_, i) => (
-                    <div
-                      key={i}
-                      className={[
-                        "absolute left-0 pointer-events-none",
-                        "bg-white dark:bg-zinc-900",
-                        "border border-zinc-200/60 dark:border-white/[0.06]",
-                        "shadow-[0_8px_32px_rgba(0,0,0,0.08),0_0_0_1px_rgba(255,255,255,0.3)]",
-                        "dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]",
-                      ].join(" ")}
-                      style={{
-                        top: i * (documentPage.height + pageGap),
-                        width: documentPage.width,
-                        height: documentPage.height,
-                      }}
-                    />
-                  ))}
-
-                  {/* 라인 넘버 거터 — A4 왼쪽 바깥 */}
-                  <LineNumbers
-                    editor={editorInstance}
-                    pageCount={pageCount}
-                    topPadding={lineNumberTopPadding}
-                  />
-
-                  <div
-                    className="relative"
-                    style={{
-                      minHeight: documentPage.height,
-                      paddingTop: margins.top,
-                      paddingRight: margins.right,
-                      paddingBottom: margins.bottom,
-                      paddingLeft: margins.left,
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    {currentDocument ? (
-                      <DocumentEditor
-                        key={currentDocument.id}
-                        content={currentDocument.content}
-                        onUpdate={handleUpdate}
-                        onEditorReady={handleEditorReady}
-                        onRequestImageUpload={() => {
-                          documentImageUploadTriggerRef.current?.();
-                        }}
-                      />
-                    ) : (
-                      <p className="text-center text-sm text-zinc-400">
-                        문서를 찾을 수 없습니다.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="h-12 shrink-0" />
-              </div>
-            </div>
-          ) : (
+          {isScreenplayMode ? (
             <div className="flex h-full flex-col">
               {/* Screenplay 툴바 */}
               <div className="shrink-0 px-8 pt-3">
@@ -1641,7 +1566,7 @@ export default function EditorPage({
                 ].join(" ")}
               >
                 <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                  현재 노드: <span className="text-zinc-700 dark:text-zinc-200">{screenplayKeyTransitionHints?.nodeType ?? currentNodeType}</span>
+                  현재 노드: <span className="text-zinc-700 dark:text-zinc-200">{getScreenplayNodePublicKey(screenplayKeyTransitionHints?.nodeType ?? currentNodeType)}</span>
                   {screenplayKeyTransitionHints?.cursorPosition ? (
                     <span className="ml-2">커서: {screenplayKeyTransitionHints.cursorPosition}</span>
                   ) : null}
@@ -1659,6 +1584,119 @@ export default function EditorPage({
               </div>
             </div>
             ) : null}
+            </div>
+          ) : (
+            <div className="flex h-full flex-col">
+              {isMarkdownMode ? (
+                <MarkdownToolbar
+                  editor={editorInstance}
+                  documentId={currentDocument?.id}
+                  onImageUpload={() => {
+                    documentImageUploadTriggerRef.current?.();
+                  }}
+                  onExportPdf={handleExportPdf}
+                />
+              ) : (
+                <DocumentToolbar
+                  editor={editorInstance}
+                  documentId={currentDocument?.id}
+                  onImageUploadReady={(fn) => {
+                    documentImageUploadTriggerRef.current = fn;
+                  }}
+                />
+              )}
+
+              <div
+                className="flex flex-1 flex-col items-center overflow-y-auto px-8"
+                style={{ overflowAnchor: "none" }}
+              >
+                {/* Ruler — A4 폭, 툴바 아래 */}
+                <div className="sticky top-0 z-20 shrink-0 pt-4 pb-0 bg-gradient-to-b from-gray-100/80 via-gray-100/60 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/60 dark:to-transparent" style={{ width: documentPage.width }}>
+                  <Ruler
+                    widthPx={documentPage.width}
+                    totalInches={documentPage.width / PX_PER_INCH}
+                    leftMarginPx={margins.left}
+                    rightMarginPx={margins.right}
+                  />
+                </div>
+
+                {/* 단일 페이지 캔버스 + 자연 스크롤 */}
+                <div
+                  className="relative shrink-0"
+                  style={{
+                    width: documentPage.width,
+                    minHeight: canvasHeight,
+                  }}
+                >
+                  {Array.from({ length: pageCount }, (_, i) => (
+                    <div
+                      key={i}
+                      className={[
+                        "absolute left-0 pointer-events-none",
+                        "bg-white dark:bg-zinc-900",
+                        "border border-zinc-200/60 dark:border-white/[0.06]",
+                        "shadow-[0_8px_32px_rgba(0,0,0,0.08),0_0_0_1px_rgba(255,255,255,0.3)]",
+                        "dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]",
+                      ].join(" ")}
+                      style={{
+                        top: i * (documentPage.height + pageGap),
+                        width: documentPage.width,
+                        height: documentPage.height,
+                      }}
+                    />
+                  ))}
+
+                  {/* 라인 넘버 거터 — A4 왼쪽 바깥 */}
+                  <LineNumbers
+                    editor={editorInstance}
+                    pageCount={pageCount}
+                    topPadding={lineNumberTopPadding}
+                  />
+
+                  <div
+                    className="relative"
+                    style={{
+                      minHeight: documentPage.height,
+                      paddingTop: margins.top,
+                      paddingRight: margins.right,
+                      paddingBottom: margins.bottom,
+                      paddingLeft: margins.left,
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    {currentDocument ? (
+                      isMarkdownMode ? (
+                        <MarkdownEditor
+                          key={currentDocument.id}
+                          content={currentDocument.content}
+                          documentId={currentDocument.id}
+                          onUpdate={handleUpdate}
+                          onEditorReady={handleEditorReady}
+                          onRequestImageUpload={() => {
+                            documentImageUploadTriggerRef.current?.();
+                          }}
+                        />
+                      ) : (
+                        <DocumentEditor
+                          key={currentDocument.id}
+                          content={currentDocument.content}
+                          onUpdate={handleUpdate}
+                          onEditorReady={handleEditorReady}
+                          onRequestImageUpload={() => {
+                            documentImageUploadTriggerRef.current?.();
+                          }}
+                        />
+                      )
+                    ) : (
+                      <p className="text-center text-sm text-zinc-400">
+                        문서를 찾을 수 없습니다.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="h-12 shrink-0" />
+              </div>
             </div>
           )}
         </main>

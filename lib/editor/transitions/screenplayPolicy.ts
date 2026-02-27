@@ -7,7 +7,7 @@ export const screenplayTransitionRules: TransitionRule[] = [
     appliesTo: {
       documentType: "screenplay",
       keys: ["Enter"],
-      nodeTypes: ["action", "sceneHeading", "transition", "paragraph"],
+      nodeTypes: ["action", "sceneHeading", "transition", "general"],
     },
     action: { kind: "allowDefault" },
     consumeEvent: false,
@@ -19,7 +19,7 @@ export const screenplayTransitionRules: TransitionRule[] = [
     appliesTo: {
       documentType: "screenplay",
       keys: ["Backspace"],
-      nodeTypes: ["action", "sceneHeading", "transition", "paragraph"],
+      nodeTypes: ["action", "sceneHeading", "transition", "general"],
     },
     action: { kind: "allowDefault" },
     consumeEvent: false,

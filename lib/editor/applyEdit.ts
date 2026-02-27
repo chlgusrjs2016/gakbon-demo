@@ -144,9 +144,10 @@ function toInsertNode(type: string, text: string): { type: string; content?: Arr
     "dialogue",
     "parenthetical",
     "transition",
-    "paragraph",
+    "general",
   ];
-  const safeType = allowed.includes(type as ScenarioNodeType) ? type : "paragraph";
+  const normalizedType = type === "paragraph" ? "general" : type;
+  const safeType = allowed.includes(normalizedType as ScenarioNodeType) ? normalizedType : "general";
   const trimmed = text ?? "";
   return trimmed
     ? { type: safeType, content: [{ type: "text", text: trimmed }] }

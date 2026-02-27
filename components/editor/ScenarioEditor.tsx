@@ -17,7 +17,7 @@ import { scenarioExtensions } from "@/lib/editor/scenarioKit";
 import type { JSONContent, Editor } from "@tiptap/react";
 import type { CSSProperties } from "react";
 
-const SCREENPLAY_EDITOR_RUNTIME_VERSION = "dialogueblock-dom-v3";
+const SCREENPLAY_EDITOR_RUNTIME_VERSION = "dialogueblock-dom-v4-general";
 
 type ScenarioEditorProps = {
   content: JSONContent | null;
@@ -42,6 +42,10 @@ export default function ScenarioEditor({
 
       extensions: [
         StarterKit.configure({
+          paragraph: false,
+          bulletList: false,
+          orderedList: false,
+          listItem: false,
           blockquote: false,
           bold: false,
           codeBlock: false,
@@ -57,7 +61,7 @@ export default function ScenarioEditor({
 
       content: content ?? {
         type: "doc",
-        content: [{ type: "paragraph" }],
+        content: [{ type: "general" }],
       },
 
       onUpdate: ({ editor }) => {
